@@ -10,3 +10,5 @@ lto = true
 codegen-units = 1
 
 [dependencies]
+fxhash = "0.2.1"
+itertools = "0.13.0"
