@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fs, io, path, sync};
 
 use fxhash::FxHashMap;
 use itertools::Itertools;
@@ -6,9 +6,10 @@ use itertools::Itertools;
 mod matrix;
 mod search;
 
+use matrix::SymmetricBitMatrix;
 use search::{make_unique, MatrixSearcher, RowOrderStore};
 
-fn do_search<const N: usize>(num_threads: usize) {
+fn do_search<const N: usize>(num_threads: usize, save_results: bool) -> io::Result<()> {
     let mut hash2mat = FxHashMap::default();
     let mut searcher = MatrixSearcher::<N>::new();
     searcher.search(|mat| {
@@ -17,7 +18,7 @@ fn do_search<const N: usize>(num_threads: usize) {
         hash2mat.entry(hash).or_insert_with(Vec::new).push(mat);
     });
 
-    let store = Arc::new(RowOrderStore::<N>::new());
+    let store = sync::Arc::new(RowOrderStore::<N>::new());
     let mut handlers = Vec::new();
     let chunk_size = hash2mat.len().div_ceil(num_threads);
     for sub_hash2mat in hash2mat
@@ -42,21 +43,43 @@ fn do_search<const N: usize>(num_threads: usize) {
         .flat_map(|h| h.join().unwrap())
         .collect::<Vec<_>>();
 
-    println!("{:>2} ==> {:>8}", N, unique_mats.len());
+    println!("{:>2} ==> {:>6}", N, unique_mats.len());
+    if !save_results {
+        return Ok(());
+    }
+
+    let root_dir = path::PathBuf::from("output");
+    fs::create_dir_all(&root_dir)?;
+    let file_path = root_dir.join(format!("C{:0>2}.txt", N));
+    let mut writer = io::BufWriter::new(fs::File::create(file_path)?);
+    write_matrices(&unique_mats, &mut writer)?;
+    Ok(())
 }
 
+fn write_matrices<const N: usize>(
+    matrices: &[SymmetricBitMatrix<N>],
+    writer: &mut impl io::Write,
+) -> io::Result<()> {
+    for mat in matrices {
+        writeln!(writer, "{}", mat.make_line_string())?;
+    }
+    Ok(())
+}
+
+const SAVE_RESULTS: bool = false; // 結果を保存する場合はここを true にする
 const NUM_THREADS: usize = 128;
 
 macro_rules! do_search_many {
     ($($mat_size:expr),+) => {
         $(
-            do_search::<$mat_size>(NUM_THREADS);
+            do_search::<$mat_size>(NUM_THREADS, SAVE_RESULTS)?;
         )*
     };
 }
 
-fn main() {
+fn main() -> io::Result<()> {
     println!("===== # of hydrocarbons with only single-bonds =====");
     println!("#C ==> # of structures");
     do_search_many!(2, 3, 4, 5, 6, 7, 8, 9, 10);
+    Ok(())
 }

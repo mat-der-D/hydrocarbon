@@ -124,6 +124,16 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         row_order.sort_by_key(|&i| morgan_hashes[i]);
         self.create_rearranged(&row_order)
     }
+
+    pub fn make_line_string(&self) -> String {
+        let mut ret = String::new();
+        for row in self.rows.iter() {
+            for i in 0..N {
+                ret.push(if row & 1 << i != 0 { '1' } else { '0' });
+            }
+        }
+        ret
+    }
 }
 
 impl<const N: usize> fmt::Display for SymmetricBitMatrix<N> {
