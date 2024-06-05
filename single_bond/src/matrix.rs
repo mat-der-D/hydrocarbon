@@ -158,7 +158,6 @@ impl<const N: usize> fmt::Display for SymmetricBitMatrix<N> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MatrixHash<const N: usize> {
-    morgan_hashes: [u64; N],
     canonical_morgan_hashes: [u64; N],
     eig3_hash: u64,
 }
@@ -167,7 +166,6 @@ impl<const N: usize> MatrixHash<N> {
     fn new(morgan_hashes: [u64; N], eig3_hash: u64) -> Self {
         let canonical_morgan_hashes = Self::canonicalize_hashes(&morgan_hashes);
         Self {
-            morgan_hashes,
             canonical_morgan_hashes,
             eig3_hash,
         }
@@ -189,15 +187,5 @@ impl<const N: usize> MatrixHash<N> {
 
     pub fn generate_row_orders<'a>(&'a self, store: &'a RowOrderStore<N>) -> &Vec<[usize; N]> {
         store.get(&self.canonical_morgan_hashes).unwrap()
-    }
-}
-
-impl<const N: usize> From<MatrixHash<N>> for u64 {
-    fn from(hash: MatrixHash<N>) -> u64 {
-        let mut ret = 0u64;
-        for &h in hash.morgan_hashes.iter() {
-            ret = ret.wrapping_add(h);
-        }
-        ret.wrapping_add(hash.eig3_hash)
     }
 }
