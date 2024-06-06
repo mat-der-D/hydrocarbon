@@ -4,6 +4,7 @@ use std::{
 };
 
 use fxhash::FxHasher;
+use serde::ser::SerializeStruct;
 
 use crate::search::RowOrderStore;
 
@@ -189,5 +190,28 @@ impl<const N: usize> MatrixHash<N> {
 
     pub fn generate_row_orders<'a>(&'a self, store: &'a RowOrderStore<N>) -> &Vec<[usize; N]> {
         store.get(&self.canonical_morgan_hashes).unwrap()
+    }
+}
+
+#[derive(Debug)]
+pub struct MatrixAndHash<const N: usize> {
+    matrix: SymmetricBitMatrix<N>,
+    hash: MatrixHash<N>,
+}
+
+impl<const N: usize> MatrixAndHash<N> {
+    pub fn new(matrix: SymmetricBitMatrix<N>) -> Self {
+        let hash = matrix.make_hash();
+        Self { matrix, hash }
+    }
+}
+
+impl<const N: usize> serde::Serialize for MatrixAndHash<N> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut ser = serializer.serialize_struct("MatrixAndHash", 2)?;
+        ser.serialize_field("dim", &N)?;
+        ser.serialize_field("matrix", &self.matrix.make_line_string())?;
+        ser.serialize_field("hash", &self.hash.canonical_morgan_hashes.to_vec())?;
+        ser.end()
     }
 }

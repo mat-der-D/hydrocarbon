@@ -6,7 +6,7 @@ use itertools::Itertools;
 mod matrix;
 mod search;
 
-use matrix::SymmetricBitMatrix;
+use matrix::{MatrixAndHash, SymmetricBitMatrix};
 use search::{make_unique, MatrixSearcher, RowOrderStore};
 
 fn do_search<const N: usize>(num_threads: usize, save_results: bool) -> io::Result<()> {
@@ -50,7 +50,7 @@ fn do_search<const N: usize>(num_threads: usize, save_results: bool) -> io::Resu
 
     let root_dir = path::PathBuf::from("output");
     fs::create_dir_all(&root_dir)?;
-    let file_path = root_dir.join(format!("C{:0>2}.txt", N));
+    let file_path = root_dir.join(format!("C{:0>2}.json", N));
     let mut writer = io::BufWriter::new(fs::File::create(file_path)?);
     write_matrices(&unique_mats, &mut writer)?;
     Ok(())
@@ -60,9 +60,11 @@ fn write_matrices<const N: usize>(
     matrices: &[SymmetricBitMatrix<N>],
     writer: &mut impl io::Write,
 ) -> io::Result<()> {
-    for mat in matrices {
-        writeln!(writer, "{}", mat.make_line_string())?;
-    }
+    let mat_hash_vec = matrices
+        .iter()
+        .map(|mat| MatrixAndHash::new(*mat))
+        .collect_vec();
+    serde_json::to_writer_pretty(writer, &mat_hash_vec)?;
     Ok(())
 }
 
