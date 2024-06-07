@@ -32,10 +32,9 @@ fn generate_hydrocarbons<const N: usize>(num_threads: usize) {
         let handler = std::thread::spawn(move || {
             let mut all_mats = Vec::new();
             for (hash, mats) in sub_hash2mat {
-                let unique_mats = make_unique(&mats, &hash, &store);
-                for mat in unique_mats {
+                let unique_mat_syms = make_unique(&mats, &hash, &store);
+                for (mat, symmetry) in unique_mat_syms {
                     let mat2 = SymmetricTwoBitsMatrix::<N>::from(mat);
-                    let symmetry = mat2.generate_symmetry(&hash, &store);
                     let dehydrogenated = generate_all_dehydrogenated(mat2, &symmetry);
                     all_mats.extend(dehydrogenated);
                 }

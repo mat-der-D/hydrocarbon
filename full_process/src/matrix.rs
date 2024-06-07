@@ -220,22 +220,6 @@ impl<const N: usize> SymmetricTwoBitsMatrix<N> {
         }
         bonds
     }
-
-    pub fn generate_symmetry(
-        &self,
-        hash: &MatrixHash<N>,
-        store: &RowOrderStore<N>,
-    ) -> Vec<[usize; N]> {
-        let mut symmetry = Vec::new();
-        let row_orders = hash.generate_row_orders(store);
-        for row_order in row_orders {
-            let rearranged = self.create_rearranged(row_order);
-            if rearranged == *self {
-                symmetry.push(*row_order);
-            }
-        }
-        symmetry
-    }
 }
 
 impl<const N: usize> From<SymmetricBitMatrix<N>> for SymmetricTwoBitsMatrix<N> {
