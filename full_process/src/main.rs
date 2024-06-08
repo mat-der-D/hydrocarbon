@@ -3,7 +3,6 @@ use std::sync;
 use dehydrogenate::generate_all_dehydrogenated;
 use fxhash::FxHashMap;
 use itertools::Itertools;
-use matrix::SymmetricTwoBitsMatrix;
 use search::{make_unique, MatrixSearcher, RowOrderStore};
 
 mod dehydrogenate;
