@@ -34,8 +34,7 @@ fn generate_hydrocarbons<const N: usize>(num_threads: usize) {
             for (hash, mats) in sub_hash2mat {
                 let unique_mat_syms = make_unique(&mats, &hash, &store);
                 for (mat, symmetry) in unique_mat_syms {
-                    let mat2 = SymmetricTwoBitsMatrix::<N>::from(mat);
-                    let dehydrogenated = generate_all_dehydrogenated(mat2, &symmetry);
+                    let dehydrogenated = generate_all_dehydrogenated(mat.into(), &symmetry);
                     all_mats.extend(dehydrogenated);
                 }
             }
