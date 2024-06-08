@@ -10,9 +10,8 @@ mod matrix;
 mod search;
 
 fn generate_hydrocarbons<const N: usize>(num_threads: usize) {
-    if N >= 12 {
-        // N >= 12 で計算したい場合は make_variants_symmetry の実装を修正する必要あり
-        panic!("N must be less than or equal to 11");
+    if N > 16 {
+        panic!("N must be less than or equal to 16");
     }
     let mut hash2mat = FxHashMap::default();
     let mut searcher = MatrixSearcher::<N>::new();

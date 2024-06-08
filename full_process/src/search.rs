@@ -117,6 +117,30 @@ impl<const N: usize> MatrixSearcher<N> {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+struct MatrixVariantSet {
+    set_u64: FxHashSet<u64>,
+    set_u128: FxHashSet<u128>,
+}
+
+impl MatrixVariantSet {
+    fn insert<const N: usize>(&mut self, matrix: SymmetricBitMatrix<N>) -> bool {
+        if N <= 11 {
+            self.set_u64.insert(matrix.into())
+        } else {
+            self.set_u128.insert(matrix.into())
+        }
+    }
+
+    fn contains<const N: usize>(&self, matrix: SymmetricBitMatrix<N>) -> bool {
+        if N <= 11 {
+            self.set_u64.contains(&matrix.into())
+        } else {
+            self.set_u128.contains(&matrix.into())
+        }
+    }
+}
+
 pub fn make_unique<const N: usize>(
     matrices: &[SymmetricBitMatrix<N>],
     hash: &MatrixHash<N>,
@@ -125,10 +149,7 @@ pub fn make_unique<const N: usize>(
     let mut unique_matrix_symmetry_pairs = Vec::new();
     let mut seen = Vec::new();
     for &mat in matrices {
-        if seen
-            .iter()
-            .any(|s: &FxHashSet<u64>| s.contains(&mat.into()))
-        {
+        if seen.iter().any(|s: &MatrixVariantSet| s.contains(mat)) {
             continue;
         }
 
@@ -143,16 +164,15 @@ fn make_variants_symmetry<const N: usize>(
     matrix: &SymmetricBitMatrix<N>,
     hash: &MatrixHash<N>,
     store: &RowOrderStore<N>,
-) -> (FxHashSet<u64>, Vec<[usize; N]>) {
-    // NOTE: N >= 12 のときは u64 に収まらないので修正が必要.
-    let mut variants = FxHashSet::default();
+) -> (MatrixVariantSet, Vec<[usize; N]>) {
+    let mut variants = MatrixVariantSet::default();
     let mut symmetry = Vec::new();
     for row_order in hash.generate_row_orders(store) {
         let rearranged = matrix.create_rearranged(row_order);
         if rearranged == *matrix {
             symmetry.push(*row_order);
         }
-        variants.insert(rearranged.into());
+        variants.insert(rearranged);
     }
     (variants, symmetry)
 }
