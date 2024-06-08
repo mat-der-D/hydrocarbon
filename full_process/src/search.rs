@@ -124,17 +124,17 @@ pub fn make_unique<const N: usize>(
 ) -> Vec<(SymmetricBitMatrix<N>, Vec<[usize; N]>)> {
     let mut unique_matrix_symmetry_pairs = Vec::new();
     let mut seen = Vec::new();
-    for mat in matrices {
+    for &mat in matrices {
         if seen
             .iter()
-            .any(|s: &FxHashSet<SymmetricBitMatrix<N>>| s.contains(mat))
+            .any(|s: &FxHashSet<u64>| s.contains(&mat.into()))
         {
             continue;
         }
 
-        let (variants, symmetry) = make_variants_symmetry(mat, hash, store);
+        let (variants, symmetry) = make_variants_symmetry(&mat, hash, store);
         seen.push(variants);
-        unique_matrix_symmetry_pairs.push((*mat, symmetry));
+        unique_matrix_symmetry_pairs.push((mat, symmetry));
     }
     unique_matrix_symmetry_pairs
 }
@@ -143,7 +143,8 @@ fn make_variants_symmetry<const N: usize>(
     matrix: &SymmetricBitMatrix<N>,
     hash: &MatrixHash<N>,
     store: &RowOrderStore<N>,
-) -> (FxHashSet<SymmetricBitMatrix<N>>, Vec<[usize; N]>) {
+) -> (FxHashSet<u64>, Vec<[usize; N]>) {
+    // NOTE: N >= 12 のときは u64 に収まらないので修正が必要.
     let mut variants = FxHashSet::default();
     let mut symmetry = Vec::new();
     for row_order in hash.generate_row_orders(store) {
@@ -151,7 +152,7 @@ fn make_variants_symmetry<const N: usize>(
         if rearranged == *matrix {
             symmetry.push(*row_order);
         }
-        variants.insert(rearranged);
+        variants.insert(rearranged.into());
     }
     (variants, symmetry)
 }

@@ -123,6 +123,27 @@ impl<const N: usize> SymmetricBitMatrix<N> {
     }
 }
 
+macro_rules! impl_from_matrix_into_hash {
+    ($num_type:ty) => {
+        impl<const N: usize> From<SymmetricBitMatrix<N>> for $num_type {
+            fn from(mat: SymmetricBitMatrix<N>) -> Self {
+                let mut hash = 0;
+                let mut shift = 0;
+                let mut mask = 0;
+                for (i, &row) in mat.rows().iter().enumerate() {
+                    hash |= ((row & mask) as $num_type) << shift;
+                    shift += i;
+                    mask = mask << 1 | 1;
+                }
+                hash
+            }
+        }
+    };
+}
+
+impl_from_matrix_into_hash!(u64); // N <= 11 の場合のみハッシュが重複しないことが保証される
+impl_from_matrix_into_hash!(u128); // N <= 16 で常にハッシュが重複しないことが保証される
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MatrixHash<const N: usize> {
     morgan_hashes: [u64; N],
