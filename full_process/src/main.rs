@@ -1,4 +1,4 @@
-use std::sync;
+use std::{collections::BTreeMap, sync};
 
 use dehydrogenate::generate_all_dehydrogenated;
 use fxhash::FxHashMap;
@@ -50,22 +50,17 @@ fn generate_hydrocarbons<const N: usize>(num_threads: usize) {
         .collect_vec();
 
     // 結果表示用の集計
-    let mut num_h_to_mats = FxHashMap::default();
+    let mut num_h_to_count = BTreeMap::new();
     for mat in all_mats {
         let num_h = mat.count_hydrogen();
-        num_h_to_mats
-            .entry(num_h)
-            .or_insert_with(Vec::new)
-            .push(mat);
+        *num_h_to_count.entry(num_h).or_insert(0u32) += 1;
     }
-    let mut keys = num_h_to_mats.keys().copied().collect_vec();
-    keys.sort();
 
     // 結果表示
     println!("===== [C = {N:>2}] =====");
     println!("#H: # of structures");
-    for key in keys {
-        println!("{:>2}: {}", key, num_h_to_mats[&key].len());
+    for (num_h, count) in num_h_to_count {
+        println!("{:>2}: {}", num_h, count);
     }
 }
 
