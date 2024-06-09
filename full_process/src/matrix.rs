@@ -210,14 +210,14 @@ impl<const N: usize> SymmetricTwoBitsMatrix<N> {
     }
 
     pub fn count_hydrogen(&self) -> u32 {
-        let mut num_h = 0;
+        let mut num_c = 0;
         for mut row in self.rows {
             for _ in 0..N {
-                num_h += row & 0b11;
+                num_c += row & 0b11;
                 row >>= 2;
             }
         }
-        4 * N as u32 - num_h
+        4 * N as u32 - num_c
     }
 
     pub fn create_dehydrogenated_unchecked(&self, row: usize, col: usize) -> Self {
