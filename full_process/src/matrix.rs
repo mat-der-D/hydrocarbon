@@ -4,7 +4,7 @@ use fxhash::FxHasher;
 
 use crate::search::RowOrderStore;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy)]
 pub struct SymmetricBitMatrix<const N: usize> {
     rows: [u16; N],
 }
@@ -122,6 +122,18 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         self.create_rearranged(&row_order)
     }
 }
+
+impl<const N: usize> PartialEq for SymmetricBitMatrix<N> {
+    fn eq(&self, other: &Self) -> bool {
+        if N <= 11 {
+            return u64::from(*self) == u64::from(*other);
+        } else {
+            return u128::from(*self) == u128::from(*other);
+        }
+    }
+}
+
+impl<const N: usize> Eq for SymmetricBitMatrix<N> {}
 
 macro_rules! impl_from_matrix_into_hash {
     ($num_type:ty) => {
