@@ -75,5 +75,5 @@ macro_rules! generate_hydrocarbons_many {
 }
 
 fn main() {
-    generate_hydrocarbons_many!(2, 3, 4, 5, 6, 7, 8, 9, 10);
+    generate_hydrocarbons_many!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 }
