@@ -99,7 +99,7 @@ impl<const N: usize> SymmetricBitMatrix<N> {
             let mut trace_i = [0; N]; // trace_i[s] = (A^(s+1))_{ii}; tr(A^(s+1)) = sum_{i=0}^{N-1} trace_i[s]
             let mut vec = [0; N];
             vec[i] = 1;
-            for s in 0..N {
+            for trace_i_s in trace_i.iter_mut() {
                 let mut new_vec = [0; N];
                 for (new_vec_elem, row) in new_vec.iter_mut().zip(mat.rows.iter()) {
                     for (k, vec_k) in vec.iter().enumerate() {
@@ -108,7 +108,7 @@ impl<const N: usize> SymmetricBitMatrix<N> {
                         }
                     }
                 }
-                trace_i[s] = new_vec[i];
+                *trace_i_s = new_vec[i];
                 vec = new_vec;
             }
             trace_i
@@ -116,7 +116,7 @@ impl<const N: usize> SymmetricBitMatrix<N> {
 
         let mut traces = [0; N];
         for i in 0..N {
-            let trace_i = _calc_trace_i::<N>(&self, i);
+            let trace_i = _calc_trace_i::<N>(self, i);
             for (traces_elem, trace_i_elem) in traces.iter_mut().zip(trace_i.iter()) {
                 *traces_elem += *trace_i_elem;
             }
