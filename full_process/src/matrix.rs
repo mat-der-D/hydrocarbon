@@ -66,7 +66,7 @@ impl<const N: usize> SymmetricBitMatrix<N> {
     }
 
     pub fn make_hash(&self) -> MatrixHash<N> {
-        MatrixHash::new(self.calc_morgan_hashes(), self.calc_eig3_hash())
+        MatrixHash::new(self.calc_morgan_hashes(), self.calc_traces_hash())
     }
 
     fn calc_morgan_hashes(&self) -> [u64; N] {
@@ -94,22 +94,37 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         ret
     }
 
-    fn calc_eig3_hash(&self) -> u64 {
-        let mut eig3 = 0;
-        for (i, row_i) in self.rows.iter().enumerate() {
-            for j in 0..i {
-                if row_i & (1 << j) == 0 {
-                    continue;
+    fn calc_traces_hash(&self) -> u64 {
+        fn _calc_trace_i<const N: usize>(mat: &SymmetricBitMatrix<N>, i: usize) -> [u16; N] {
+            let mut trace_i = [0; N]; // trace_i[s] = (A^(s+1))_{ii}; tr(A^(s+1)) = sum_{i=1}^{N} trace_i[s]
+            let mut vec = [0; N];
+            vec[i] = 1;
+            for s in 0..N {
+                let mut new_vec = [0; N];
+                for (new_vec_elem, row) in new_vec.iter_mut().zip(mat.rows.iter()) {
+                    for (k, vec_k) in vec.iter().enumerate() {
+                        if row & 1 << k != 0 {
+                            *new_vec_elem += vec_k;
+                        }
+                    }
                 }
-                for row_k in self.rows.iter().take(j) {
-                    eig3 += (row_k >> i) & (row_k >> j) & 1;
-                }
+                trace_i[s] = new_vec[i];
+                vec = new_vec;
+            }
+            trace_i
+        }
+
+        let mut traces = [0; N];
+        for i in 0..N {
+            let trace_i = _calc_trace_i::<N>(&self, i);
+            for (traces_elem, trace_i_elem) in traces.iter_mut().zip(trace_i.iter()) {
+                *traces_elem += *trace_i_elem;
             }
         }
 
-        let mut state = FxHasher::default();
-        eig3.hash(&mut state);
-        state.finish()
+        let mut hasher = FxHasher::default();
+        traces.hash(&mut hasher);
+        hasher.finish()
     }
 
     pub fn partially_canonicalize(&self) -> Self {
@@ -160,16 +175,16 @@ impl_from_matrix_into_hash!(u128); // N <= 16 で常にハッシュが重複し�
 pub struct MatrixHash<const N: usize> {
     morgan_hashes: [u64; N],
     canonical_morgan_hashes: [u64; N],
-    eig3_hash: u64,
+    traces_hash: u64,
 }
 
 impl<const N: usize> MatrixHash<N> {
-    fn new(morgan_hashes: [u64; N], eig3_hash: u64) -> Self {
+    fn new(morgan_hashes: [u64; N], traces_hash: u64) -> Self {
         let canonical_morgan_hashes = Self::canonicalize_hashes(&morgan_hashes);
         Self {
             morgan_hashes,
             canonical_morgan_hashes,
-            eig3_hash,
+            traces_hash,
         }
     }
 
