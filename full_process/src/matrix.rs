@@ -96,7 +96,7 @@ impl<const N: usize> SymmetricBitMatrix<N> {
 
     fn calc_traces_hash(&self) -> u64 {
         fn _calc_trace_i<const N: usize>(mat: &SymmetricBitMatrix<N>, i: usize) -> [u16; N] {
-            let mut trace_i = [0; N]; // trace_i[s] = (A^(s+1))_{ii}; tr(A^(s+1)) = sum_{i=1}^{N} trace_i[s]
+            let mut trace_i = [0; N]; // trace_i[s] = (A^(s+1))_{ii}; tr(A^(s+1)) = sum_{i=0}^{N-1} trace_i[s]
             let mut vec = [0; N];
             vec[i] = 1;
             for s in 0..N {
