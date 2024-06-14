@@ -95,31 +95,29 @@ impl<const N: usize> SymmetricBitMatrix<N> {
     }
 
     fn calc_traces_hash(&self) -> u64 {
-        fn _calc_trace_i<const N: usize>(mat: &SymmetricBitMatrix<N>, i: usize) -> [u16; N] {
-            let mut trace_i = [0; N]; // trace_i[s] = (A^(s+1))_{ii}; tr(A^(s+1)) = sum_{i=0}^{N-1} trace_i[s]
-            let mut vec = [0; N];
-            vec[i] = 1;
-            for trace_i_s in trace_i.iter_mut() {
-                let mut new_vec = [0; N];
-                for (new_vec_elem, row) in new_vec.iter_mut().zip(mat.rows.iter()) {
-                    for (k, vec_k) in vec.iter().enumerate() {
-                        if row & 1 << k != 0 {
-                            *new_vec_elem += vec_k;
-                        }
-                    }
-                }
-                *trace_i_s = new_vec[i];
-                vec = new_vec;
-            }
-            trace_i
-        }
-
         let mut traces = [0; N];
-        for i in 0..N {
-            let trace_i = _calc_trace_i::<N>(self, i);
-            for (traces_elem, trace_i_elem) in traces.iter_mut().zip(trace_i.iter()) {
-                *traces_elem += *trace_i_elem;
+        let mut mat = [[0; N]; N];
+        for (i, row) in mat.iter_mut().enumerate() {
+            row[i] = 1;
+        }
+        for trace in traces.iter_mut() {
+            let mut new_mat = [[0; N]; N];
+            for (new_row, row) in new_mat.iter_mut().zip(mat.iter()) {
+                for (new_row_elem, row_bits) in new_row.iter_mut().zip(self.rows.iter()) {
+                    *new_row_elem = row
+                        .iter()
+                        .enumerate()
+                        .filter(|(j, _)| row_bits & 1 << j != 0)
+                        .map(|(_, elem)| elem)
+                        .sum();
+                }
             }
+            *trace = new_mat
+                .iter()
+                .enumerate()
+                .map(|(i, row)| row[i])
+                .sum::<u16>();
+            mat = new_mat;
         }
 
         let mut hasher = FxHasher::default();
