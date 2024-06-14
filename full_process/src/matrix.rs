@@ -2,8 +2,6 @@ use std::hash::{Hash, Hasher};
 
 use fxhash::FxHasher;
 
-use crate::search::RowOrderStore;
-
 #[derive(Debug, Clone, Copy)]
 pub struct SymmetricBitMatrix<const N: usize> {
     rows: [u16; N],
@@ -67,6 +65,49 @@ impl<const N: usize> SymmetricBitMatrix<N> {
 
     pub fn make_hash(&self) -> MatrixHash<N> {
         MatrixHash::new(self.calc_morgan_hashes(), self.calc_traces_hash())
+    }
+
+    pub fn is_equivalent_to(&self, other: &Self, common_hash: &MatrixHash<N>) -> bool {
+        self.is_equivalent_to_impl(other, common_hash, 0, &mut [None; N], &mut [None; N])
+    }
+
+    fn is_equivalent_to_impl(
+        &self,
+        other: &Self,
+        common_hash: &MatrixHash<N>,
+        depth: usize,
+        m1_to_2: &mut [Option<usize>; N],
+        m2_to_1: &mut [Option<usize>; N],
+    ) -> bool {
+        if depth == N {
+            return true;
+        }
+
+        for v in 0..N {
+            if common_hash.morgan_hashes[v] != common_hash.morgan_hashes[depth] {
+                continue;
+            }
+            if m2_to_1[v].is_some() {
+                continue;
+            }
+            let mut ok = true;
+            for i in 0..depth {
+                if self.rows[depth] & 1 << i != other.rows[v] & 1 << m1_to_2[i].unwrap() {
+                    ok = false;
+                    break;
+                }
+            }
+            if ok {
+                m1_to_2[depth] = Some(v);
+                m2_to_1[v] = Some(depth);
+                if self.is_equivalent_to_impl(other, common_hash, depth + 1, m1_to_2, m2_to_1) {
+                    return true;
+                }
+                m1_to_2[depth] = None;
+                m2_to_1[v] = None;
+            }
+        }
+        false
     }
 
     fn calc_morgan_hashes(&self) -> [u64; N] {
@@ -201,10 +242,6 @@ impl<const N: usize> MatrixHash<N> {
         }
         canonicalized
     }
-
-    pub fn generate_row_orders<'a>(&'a self, store: &'a RowOrderStore<N>) -> &Vec<[usize; N]> {
-        store.get(&self.canonical_morgan_hashes).unwrap()
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -213,17 +250,6 @@ pub struct SymmetricTwoBitsMatrix<const N: usize> {
 }
 
 impl<const N: usize> SymmetricTwoBitsMatrix<N> {
-    pub fn create_rearranged(&self, row_order: &[usize]) -> Self {
-        let mut rows_new = [0; N];
-        for (row_new, i_old) in rows_new.iter_mut().zip(row_order.iter()) {
-            let row_old = unsafe { self.rows.get_unchecked(*i_old) };
-            for (j_new, j_old) in row_order.iter().enumerate() {
-                *row_new |= (row_old >> (2 * j_old) & 0b11) << (2 * j_new);
-            }
-        }
-        Self { rows: rows_new }
-    }
-
     pub fn count_hydrogen(&self) -> u32 {
         let mut num_c = 0;
         for mut row in self.rows {
@@ -267,6 +293,52 @@ impl<const N: usize> SymmetricTwoBitsMatrix<N> {
             }
         }
         bonds
+    }
+
+    pub fn is_equivalent_to(&self, other: &Self, common_hash: &MatrixHash<N>) -> bool {
+        self.is_equivalent_to_impl(other, common_hash, 0, &mut [None; N], &mut [None; N])
+    }
+
+    fn is_equivalent_to_impl(
+        &self,
+        other: &Self,
+        common_hash: &MatrixHash<N>,
+        depth: usize,
+        m1_to_2: &mut [Option<usize>; N],
+        m2_to_1: &mut [Option<usize>; N],
+    ) -> bool {
+        if depth == N {
+            return true;
+        }
+
+        for v in 0..N {
+            if common_hash.morgan_hashes[v] != common_hash.morgan_hashes[depth] {
+                continue;
+            }
+            if m2_to_1[v].is_some() {
+                continue;
+            }
+            let mut ok = true;
+            for i in 0..depth {
+                if self.rows[depth] & (0b11 << (2 * i))
+                    != other.rows[v] & (0b11 << (2 * m1_to_2[i].unwrap()))
+                {
+                    ok = false;
+                    break;
+                }
+            }
+
+            if ok {
+                m1_to_2[depth] = Some(v);
+                m2_to_1[v] = Some(depth);
+                if self.is_equivalent_to_impl(other, common_hash, depth + 1, m1_to_2, m2_to_1) {
+                    return true;
+                }
+                m1_to_2[depth] = None;
+                m2_to_1[v] = None;
+            }
+        }
+        false
     }
 }
 

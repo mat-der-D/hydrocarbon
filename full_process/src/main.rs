@@ -1,9 +1,9 @@
-use std::{collections::BTreeMap, sync};
+use std::collections::BTreeMap;
 
-use dehydrogenate::generate_all_dehydrogenated;
+use dehydrogenate::generate_all_dehydrogenated2;
 use fxhash::FxHashMap;
 use itertools::Itertools;
-use search::{make_unique, MatrixSearcher, RowOrderStore};
+use search::{make_unique2, MatrixSearcher};
 
 mod dehydrogenate;
 mod matrix;
@@ -21,7 +21,6 @@ fn generate_hydrocarbons<const N: usize>(num_threads: usize) {
         hash2mat.entry(hash).or_insert_with(Vec::new).push(mat);
     });
 
-    let store = sync::Arc::new(RowOrderStore::<N>::new());
     let mut handlers = Vec::new();
     let chunk_size = hash2mat.len().div_ceil(num_threads);
     for sub_hash2mat in hash2mat
@@ -30,13 +29,12 @@ fn generate_hydrocarbons<const N: usize>(num_threads: usize) {
         .into_iter()
         .map(|c| c.collect::<FxHashMap<_, _>>())
     {
-        let store = store.clone();
         let handler = std::thread::spawn(move || {
             let mut all_mats = Vec::new();
             for (hash, mats) in sub_hash2mat {
-                let unique_mat_syms = make_unique(&mats, &hash, &store);
-                for (mat, symmetry) in unique_mat_syms {
-                    let dehydrogenated = generate_all_dehydrogenated(mat.into(), &symmetry);
+                let unique_mats = make_unique2(&mats, &hash);
+                for mat in unique_mats {
+                    let dehydrogenated = generate_all_dehydrogenated2(mat.into(), &hash);
                     all_mats.extend(dehydrogenated);
                 }
             }

@@ -1,59 +1,4 @@
-use fxhash::{FxHashMap, FxHashSet};
-use itertools::Itertools;
-
 use crate::matrix::{MatrixHash, SymmetricBitMatrix};
-
-#[derive(Debug, Clone)]
-pub struct RowOrderStore<const N: usize> {
-    memory: FxHashMap<[u64; N], Vec<[usize; N]>>,
-}
-
-impl<const N: usize> Default for RowOrderStore<N> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<const N: usize> RowOrderStore<N> {
-    pub fn new() -> Self {
-        let mut memory = FxHashMap::default();
-        let mut hash_array = [0; N];
-        for deltas in 0..(1 << (N - 1)) {
-            for n in 0..(N - 1) {
-                hash_array[n + 1] = hash_array[n] + (deltas >> n & 1);
-            }
-            memory.insert(hash_array, Self::generate(&hash_array));
-        }
-        Self { memory }
-    }
-
-    fn generate(hash: &[u64]) -> Vec<[usize; N]> {
-        let mut row_orders = Vec::new();
-        Self::generate_impl(hash, &mut [0; N], &mut row_orders);
-        row_orders
-    }
-
-    fn generate_impl(hash: &[u64], row_order: &mut [usize; N], row_orders: &mut Vec<[usize; N]>) {
-        if hash.is_empty() {
-            row_orders.push(*row_order);
-            return;
-        }
-
-        let same_count = hash.iter().take_while(|&&x| x == hash[0]).count();
-        let residual = &hash[same_count..];
-        let i0 = N - hash.len();
-        for perm in (i0..(i0 + same_count)).permutations(same_count) {
-            for (i, &p) in perm.iter().enumerate() {
-                row_order[i0 + i] = p;
-            }
-            Self::generate_impl(residual, row_order, row_orders);
-        }
-    }
-
-    pub fn get(&self, hash_array: &[u64; N]) -> Option<&Vec<[usize; N]>> {
-        self.memory.get(hash_array)
-    }
-}
 
 #[derive(Debug)]
 pub struct MatrixSearcher<const N: usize> {
@@ -117,62 +62,21 @@ impl<const N: usize> MatrixSearcher<N> {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-struct MatrixVariantSet {
-    set_u64: FxHashSet<u64>,
-    set_u128: FxHashSet<u128>,
-}
-
-impl MatrixVariantSet {
-    fn insert<const N: usize>(&mut self, matrix: SymmetricBitMatrix<N>) -> bool {
-        if N <= 11 {
-            self.set_u64.insert(matrix.into())
-        } else {
-            self.set_u128.insert(matrix.into())
-        }
-    }
-
-    fn contains<const N: usize>(&self, matrix: SymmetricBitMatrix<N>) -> bool {
-        if N <= 11 {
-            self.set_u64.contains(&matrix.into())
-        } else {
-            self.set_u128.contains(&matrix.into())
-        }
-    }
-}
-
-pub fn make_unique<const N: usize>(
+pub fn make_unique2<const N: usize>(
     matrices: &[SymmetricBitMatrix<N>],
     hash: &MatrixHash<N>,
-    store: &RowOrderStore<N>,
-) -> Vec<(SymmetricBitMatrix<N>, Vec<[usize; N]>)> {
-    let mut unique_matrix_symmetry_pairs = Vec::new();
+) -> Vec<SymmetricBitMatrix<N>> {
+    let mut unique_matrices = Vec::new();
     let mut seen = Vec::new();
     for &mat in matrices {
-        if seen.iter().any(|s: &MatrixVariantSet| s.contains(mat)) {
+        if seen
+            .iter()
+            .any(|m: &SymmetricBitMatrix<N>| m.is_equivalent_to(&mat, hash))
+        {
             continue;
         }
-
-        let (variants, symmetry) = make_variants_symmetry(&mat, hash, store);
-        seen.push(variants);
-        unique_matrix_symmetry_pairs.push((mat, symmetry));
+        seen.push(mat);
+        unique_matrices.push(mat);
     }
-    unique_matrix_symmetry_pairs
-}
-
-fn make_variants_symmetry<const N: usize>(
-    matrix: &SymmetricBitMatrix<N>,
-    hash: &MatrixHash<N>,
-    store: &RowOrderStore<N>,
-) -> (MatrixVariantSet, Vec<[usize; N]>) {
-    let mut variants = MatrixVariantSet::default();
-    let mut symmetry = Vec::new();
-    for row_order in hash.generate_row_orders(store) {
-        let rearranged = matrix.create_rearranged(row_order);
-        if rearranged == *matrix {
-            symmetry.push(*row_order);
-        }
-        variants.insert(rearranged);
-    }
-    (variants, symmetry)
+    unique_matrices
 }
