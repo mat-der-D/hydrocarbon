@@ -34,7 +34,11 @@ fn generate_hydrocarbons<const N: usize>(num_threads: usize) {
         let handler = std::thread::spawn(move || {
             let mut all_mats = Vec::new();
             for (hash, mats) in sub_hash2mat {
-                let unique_mat_syms = make_unique(&mats, &hash, &store);
+                let unique_mat_syms = if N <= 11 {
+                    make_unique::<N, u64>(&mats, &hash, &store)
+                } else {
+                    make_unique::<N, u128>(&mats, &hash, &store)
+                };
                 for (mat, symmetry) in unique_mat_syms {
                     let dehydrogenated = generate_all_dehydrogenated(mat.into(), &symmetry);
                     all_mats.extend(dehydrogenated);
