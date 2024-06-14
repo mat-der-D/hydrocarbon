@@ -32,9 +32,9 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         let mut connected = 1;
         for _ in 0..N {
             let tmp = connected;
-            for i in 0..N {
+            for (i, &row) in self.rows.iter().enumerate() {
                 if tmp & 1 << i != 0 {
-                    connected |= self.rows[i];
+                    connected |= row;
                 }
             }
             if connected == Self::REPUNIT {
@@ -56,9 +56,9 @@ impl<const N: usize> SymmetricBitMatrix<N> {
 
     pub fn create_rearranged(&self, row_order: &[usize]) -> Self {
         let mut rows_new = [0; N];
-        for (row_new, i_old) in rows_new.iter_mut().zip(row_order.iter()) {
-            let row_old = unsafe { self.rows.get_unchecked(*i_old) };
-            for (j_new, j_old) in row_order.iter().enumerate() {
+        for (row_new, &i_old) in rows_new.iter_mut().zip(row_order.iter()) {
+            let row_old = unsafe { self.rows.get_unchecked(i_old) };
+            for (j_new, &j_old) in row_order.iter().enumerate() {
                 *row_new |= (row_old >> j_old & 1) << j_new;
             }
         }
@@ -75,7 +75,7 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         for s in 0..N {
             let mut new_hash = [0; N];
             for (i, new_hash_i) in new_hash.iter_mut().enumerate() {
-                for (j, hash_j) in hash.iter().enumerate() {
+                for (j, &hash_j) in hash.iter().enumerate() {
                     if self.rows[i] & 1 << j != 0 {
                         *new_hash_i += hash_j;
                     }
@@ -112,11 +112,7 @@ impl<const N: usize> SymmetricBitMatrix<N> {
                         .sum();
                 }
             }
-            *trace = new_mat
-                .iter()
-                .enumerate()
-                .map(|(i, row)| row[i])
-                .sum::<u16>();
+            *trace = new_mat.iter().enumerate().map(|(i, row)| row[i]).sum();
             mat = new_mat;
         }
 
