@@ -103,7 +103,12 @@ impl<const N: usize> MatrixSearcher<N> {
     fn is_fine_up_to(matrix: &SymmetricBitMatrix<N>, idx_row: usize) -> bool {
         let mut prev_row = u16::MAX;
         let mut prev_nbits = 4;
-        for (i, &row) in matrix.rows().iter().enumerate() {
+        for (i, &row) in matrix
+            .rows()
+            .iter()
+            .enumerate()
+            .skip(idx_row.saturating_sub(2))
+        {
             let nbits = row.count_ones();
             if nbits > prev_nbits || (nbits == prev_nbits && row > prev_row) {
                 return false;
