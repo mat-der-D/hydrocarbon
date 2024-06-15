@@ -49,6 +49,18 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         self.rows[col] ^= 1 << row;
     }
 
+    pub fn is_symmetrical_under(&self, row_order: &[usize; N]) -> bool {
+        for (&row_i_new, &i_old) in self.rows.iter().zip(row_order.iter()) {
+            let &row_i_old = unsafe { self.rows.get_unchecked(i_old) };
+            for (j_new, &j_old) in row_order.iter().enumerate() {
+                if row_i_new >> j_new & 1 != row_i_old >> j_old & 1 {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
     pub fn create_rearranged(&self, row_order: &[usize]) -> Self {
         let mut rows_new = [0; N];
         for (row_new, &i_old) in rows_new.iter_mut().zip(row_order.iter()) {
@@ -99,7 +111,14 @@ impl<const N: usize> SymmetricBitMatrix<N> {
             raw_feat.hash(&mut hasher);
             *feat = hasher.finish();
         }
-        features
+
+        let mut ext_features = [0; N];
+        for (ext_feat, &row) in ext_features.iter_mut().zip(self.rows.iter()) {
+            *ext_feat = features.iter().enumerate().fold(0u64, |acc, (i, &f)| {
+                acc.wrapping_add(f * ((row >> i) & 1) as u64)
+            });
+        }
+        ext_features
     }
 
     const INDEX_ARRAY: [usize; N] = {
