@@ -92,24 +92,20 @@ impl<const N: usize> MatrixSearcher<N> {
             (row, col + 1)
         };
 
-        if next_row == row || Self::is_fine_up_to(&self.matrix, next_row) {
+        if next_row == row || Self::is_fine_up_to(&self.matrix, next_row, true) {
             self.search_impl(next_row, next_col, f);
         }
         self.matrix.flip(row, col);
-        if Self::is_fine_up_to(&self.matrix, next_row) {
+        if Self::is_fine_up_to(&self.matrix, next_row, next_row != row) {
             self.search_impl(next_row, next_col, f);
         }
         self.matrix.flip(row, col);
     }
 
-    fn is_fine_up_to(matrix: &SymmetricBitMatrix<N>, idx_row: usize) -> bool {
+    fn is_fine_up_to(matrix: &SymmetricBitMatrix<N>, idx_row: usize, check_prev_row: bool) -> bool {
+        let num_skip = idx_row.saturating_sub(1 + check_prev_row as usize);
         let mut prev = 0x4ffff;
-        for (i, &row) in matrix
-            .rows()
-            .iter()
-            .enumerate()
-            .skip(idx_row.saturating_sub(2))
-        {
+        for (i, &row) in matrix.rows().iter().enumerate().skip(num_skip) {
             let this = (row.count_ones() << 16) | (row as u32);
             if this > prev {
                 return false;
