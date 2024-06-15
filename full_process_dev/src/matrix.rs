@@ -69,13 +69,19 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         MatrixHash::new(self.calc_features())
     }
 
+    const UNIT_MATRIX: [[u16; N]; N] = {
+        let mut mat = [[0; N]; N];
+        let mut i = 0;
+        while i < N {
+            mat[i][i] = 1;
+            i += 1;
+        }
+        mat
+    };
+
     fn calc_features(&self) -> [u64; N] {
         let mut raw_features = [[0; N]; N];
-
-        let mut mat = [[0; N]; N];
-        for (i, row) in mat.iter_mut().enumerate() {
-            row[i] = 1;
-        }
+        let mut mat = Self::UNIT_MATRIX;
         for s in 0..N {
             let mut new_mat = [[0; N]; N];
             for (new_row, row) in new_mat.iter_mut().zip(mat.iter()) {
@@ -105,12 +111,19 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         features
     }
 
+    const INDEX_ARRAY: [usize; N] = {
+        let mut array = [0; N];
+        let mut i = 0;
+        while i < N {
+            array[i] = i;
+            i += 1;
+        }
+        array
+    };
+
     pub fn partially_canonicalize(&self) -> (Self, MatrixHash<N>) {
         let features = self.calc_features();
-        let mut row_order = [0; N];
-        for (i, row_order_i) in row_order.iter_mut().enumerate() {
-            *row_order_i = i;
-        }
+        let mut row_order = Self::INDEX_ARRAY;
         row_order.sort_by_key(|&i| features[i]);
         let canon = self.create_rearranged(&row_order);
         let mut sorted_features = [0; N];
