@@ -111,18 +111,18 @@ impl<const N: usize> SymmetricBitMatrix<N> {
     }
 
     pub fn partially_canonicalize(&self) -> (Self, MatrixHash<N>) {
+        let (morgan_hashes, traces_hash) = self.calc_hashes();
         let mut row_order = [0; N];
         for (i, row_order_i) in row_order.iter_mut().enumerate() {
             *row_order_i = i;
         }
-        let hash = self.make_hash();
-        row_order.sort_by_key(|&i| hash.morgan_hashes[i]);
+        row_order.sort_by_key(|&i| morgan_hashes[i]);
         let canon = self.create_rearranged(&row_order);
-        let mut new_morgan_hahes = [0; N];
-        for (new_hash, &i_old) in new_morgan_hahes.iter_mut().zip(row_order.iter()) {
-            *new_hash = hash.morgan_hashes[i_old];
+        let mut sorted_morgan_hashes = [0; N];
+        for (hash, &i_old) in sorted_morgan_hashes.iter_mut().zip(row_order.iter()) {
+            *hash = morgan_hashes[i_old];
         }
-        (canon, MatrixHash::new(new_morgan_hahes, hash.traces_hash))
+        (canon, MatrixHash::new(sorted_morgan_hashes, traces_hash))
     }
 }
 
