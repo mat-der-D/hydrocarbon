@@ -66,51 +66,32 @@ impl<const N: usize> SymmetricBitMatrix<N> {
     }
 
     pub fn make_hash(&self) -> MatrixHash<N> {
-        MatrixHash::new(self.calc_morgan_hashes(), self.calc_traces_hash())
+        let (morgan_hashes, traces_hash) = self.calc_hashes();
+        MatrixHash::new(morgan_hashes, traces_hash)
     }
 
-    fn calc_morgan_hashes(&self) -> [u64; N] {
-        let mut hash_array = [[0; N]; N];
-        let mut hash = [1u32; N];
-        for s in 0..N {
-            let mut new_hash = [0; N];
-            for (i, new_hash_i) in new_hash.iter_mut().enumerate() {
-                for (j, &hash_j) in hash.iter().enumerate() {
-                    if self.rows[i] & 1 << j != 0 {
-                        *new_hash_i += hash_j;
-                    }
-                    hash_array[i][s] = *new_hash_i;
-                }
-            }
-            hash = new_hash;
-        }
-
-        let mut ret = [0; N];
-        for (ret_elem, arr) in ret.iter_mut().zip(hash_array.iter()) {
-            let mut hasher = FxHasher::default();
-            arr.hash(&mut hasher);
-            *ret_elem = hasher.finish();
-        }
-        ret
-    }
-
-    fn calc_traces_hash(&self) -> u64 {
+    fn calc_hashes(&self) -> ([u64; N], u64) {
+        let mut morgans = [[0; N]; N];
         let mut traces = [0; N];
+
+        // A^s を計算しながら, tr(A^s) と A^s [1, 1, ..., 1]^T を計算
         let mut mat = [[0; N]; N];
         for (i, row) in mat.iter_mut().enumerate() {
             row[i] = 1;
         }
-        for trace in traces.iter_mut() {
+        for (s, trace) in traces.iter_mut().enumerate() {
             let mut new_mat = [[0; N]; N];
             for (new_row, row) in new_mat.iter_mut().zip(mat.iter()) {
                 for (new_row_elem, row_bits) in new_row.iter_mut().zip(self.rows.iter()) {
                     *new_row_elem = row
                         .iter()
                         .enumerate()
-                        .filter(|(j, _)| row_bits & 1 << j != 0)
-                        .map(|(_, elem)| elem)
+                        .map(|(j, elem)| elem * ((row_bits >> j) & 1))
                         .sum();
                 }
+            }
+            for (morgan, row) in morgans.iter_mut().zip(new_mat.iter()) {
+                morgan[s] = row.iter().map(|&elem| elem).sum();
             }
             *trace = new_mat.iter().enumerate().map(|(i, row)| row[i]).sum();
             mat = new_mat;
@@ -118,17 +99,30 @@ impl<const N: usize> SymmetricBitMatrix<N> {
 
         let mut hasher = FxHasher::default();
         traces.hash(&mut hasher);
-        hasher.finish()
+        let traces_hash = hasher.finish();
+
+        let mut morgan_hashes = [0; N];
+        for (hash, morgan) in morgan_hashes.iter_mut().zip(morgans.iter()) {
+            let mut hasher = FxHasher::default();
+            morgan.hash(&mut hasher);
+            *hash = hasher.finish();
+        }
+        (morgan_hashes, traces_hash)
     }
 
-    pub fn partially_canonicalize(&self) -> Self {
+    pub fn partially_canonicalize(&self) -> (Self, MatrixHash<N>) {
         let mut row_order = [0; N];
         for (i, row_order_i) in row_order.iter_mut().enumerate() {
             *row_order_i = i;
         }
-        let morgan_hashes = self.calc_morgan_hashes();
-        row_order.sort_by_key(|&i| morgan_hashes[i]);
-        self.create_rearranged(&row_order)
+        let hash = self.make_hash();
+        row_order.sort_by_key(|&i| hash.morgan_hashes[i]);
+        let canon = self.create_rearranged(&row_order);
+        let mut new_morgan_hahes = [0; N];
+        for (new_hash, &i_old) in new_morgan_hahes.iter_mut().zip(row_order.iter()) {
+            *new_hash = hash.morgan_hashes[i_old];
+        }
+        (canon, MatrixHash::new(new_morgan_hahes, hash.traces_hash))
     }
 }
 

@@ -16,8 +16,7 @@ fn generate_hydrocarbons<const N: usize>(num_threads: usize) {
     let mut hash2mat = FxHashMap::default();
     let mut searcher = MatrixSearcher::<N>::new();
     searcher.search(|mat| {
-        let mat = mat.partially_canonicalize();
-        let hash = mat.make_hash();
+        let (mat, hash) = mat.partially_canonicalize();
         hash2mat.entry(hash).or_insert_with(Vec::new).push(mat);
     });
 
