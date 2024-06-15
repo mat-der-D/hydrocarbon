@@ -60,10 +60,6 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         Self { rows: rows_new }
     }
 
-    pub fn make_hash(&self) -> MatrixHash<N> {
-        MatrixHash::new(self.calc_features())
-    }
-
     const UNIT_MATRIX: [[u16; N]; N] = {
         let mut mat = [[0; N]; N];
         let mut i = 0;
