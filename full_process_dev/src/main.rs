@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, sync};
 use dehydrogenate::generate_all_dehydrogenated;
 use fxhash::FxHashMap;
 use itertools::Itertools;
-use search::{make_unique, MatrixSearcher, RowOrderStore};
+use search::{make_symmetry, MatrixSearcher, RowOrderStore};
 
 mod dehydrogenate;
 mod matrix;
@@ -17,7 +17,7 @@ fn generate_hydrocarbons<const N: usize>(num_threads: usize) {
     let mut searcher = MatrixSearcher::<N>::new();
     searcher.search(|mat| {
         let (mat, hash) = mat.partially_canonicalize();
-        hash2mat.entry(hash).or_insert_with(Vec::new).push(mat);
+        hash2mat.entry(hash).or_insert(mat);
     });
 
     let store = sync::Arc::new(RowOrderStore::<N>::new());
@@ -32,8 +32,8 @@ fn generate_hydrocarbons<const N: usize>(num_threads: usize) {
         let store = store.clone();
         let handler = std::thread::spawn(move || {
             let mut all_mats = Vec::new();
-            for (hash, mats) in sub_hash2mat {
-                let (mat, symmetry) = make_unique(&mats, &hash, &store);
+            for (hash, mat) in sub_hash2mat {
+                let symmetry = make_symmetry(&mat, &hash, &store);
                 let dehydrogenated = generate_all_dehydrogenated(mat.into(), &symmetry);
                 all_mats.extend(dehydrogenated);
             }

@@ -120,17 +120,7 @@ impl<const N: usize> MatrixSearcher<N> {
     }
 }
 
-pub fn make_unique<const N: usize>(
-    matrices: &[SymmetricBitMatrix<N>],
-    hash: &MatrixHash<N>,
-    store: &RowOrderStore<N>,
-) -> (SymmetricBitMatrix<N>, Vec<[usize; N]>) {
-    let &mat = matrices.iter().next().unwrap();
-    let symmetry = make_symmetry(&mat, hash, store);
-    (mat, symmetry)
-}
-
-fn make_symmetry<const N: usize>(
+pub fn make_symmetry<const N: usize>(
     mat: &SymmetricBitMatrix<N>,
     hash: &MatrixHash<N>,
     store: &RowOrderStore<N>,
