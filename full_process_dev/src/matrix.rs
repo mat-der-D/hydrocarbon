@@ -44,14 +44,9 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         false
     }
 
-    pub fn activate(&mut self, row: usize, col: usize) {
-        self.rows[row] |= 1 << col;
-        self.rows[col] |= 1 << row;
-    }
-
-    pub fn deactivate(&mut self, row: usize, col: usize) {
-        self.rows[row] &= !(1 << col);
-        self.rows[col] &= !(1 << row);
+    pub fn flip(&mut self, row: usize, col: usize) {
+        self.rows[row] ^= 1 << col;
+        self.rows[col] ^= 1 << row;
     }
 
     pub fn create_rearranged(&self, row_order: &[usize]) -> Self {
