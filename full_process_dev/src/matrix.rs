@@ -66,20 +66,17 @@ impl<const N: usize> SymmetricBitMatrix<N> {
     }
 
     pub fn make_hash(&self) -> MatrixHash<N> {
-        let (morgan_hashes, traces_hash) = self.calc_hashes();
-        MatrixHash::new(morgan_hashes, traces_hash)
+        MatrixHash::new(self.calc_features())
     }
 
-    fn calc_hashes(&self) -> ([u64; N], u64) {
-        let mut morgans = [[0; N]; N];
-        let mut traces = [0; N];
+    fn calc_features(&self) -> [u64; N] {
+        let mut raw_features = [[0; N]; N];
 
-        // A^s を計算しながら, tr(A^s) と A^s [1, 1, ..., 1]^T を計算
         let mut mat = [[0; N]; N];
         for (i, row) in mat.iter_mut().enumerate() {
             row[i] = 1;
         }
-        for (s, trace) in traces.iter_mut().enumerate() {
+        for s in 0..N {
             let mut new_mat = [[0; N]; N];
             for (new_row, row) in new_mat.iter_mut().zip(mat.iter()) {
                 for (new_row_elem, row_bits) in new_row.iter_mut().zip(self.rows.iter()) {
@@ -90,39 +87,37 @@ impl<const N: usize> SymmetricBitMatrix<N> {
                         .sum();
                 }
             }
-            for (morgan, row) in morgans.iter_mut().zip(new_mat.iter()) {
-                morgan[s] = row.iter().map(|&elem| elem).sum();
+            for (i, (raw_feat, row)) in raw_features.iter_mut().zip(new_mat.iter()).enumerate() {
+                raw_feat[s] = {
+                    let sum: u16 = row.iter().sum();
+                    (sum as u32) | (row[i] as u32) << 16
+                };
             }
-            *trace = new_mat.iter().enumerate().map(|(i, row)| row[i]).sum();
             mat = new_mat;
         }
 
-        let mut hasher = FxHasher::default();
-        traces.hash(&mut hasher);
-        let traces_hash = hasher.finish();
-
-        let mut morgan_hashes = [0; N];
-        for (hash, morgan) in morgan_hashes.iter_mut().zip(morgans.iter()) {
+        let mut features = [0; N];
+        for (feat, raw_feat) in features.iter_mut().zip(raw_features.iter()) {
             let mut hasher = FxHasher::default();
-            morgan.hash(&mut hasher);
-            *hash = hasher.finish();
+            raw_feat.hash(&mut hasher);
+            *feat = hasher.finish();
         }
-        (morgan_hashes, traces_hash)
+        features
     }
 
     pub fn partially_canonicalize(&self) -> (Self, MatrixHash<N>) {
-        let (morgan_hashes, traces_hash) = self.calc_hashes();
+        let features = self.calc_features();
         let mut row_order = [0; N];
         for (i, row_order_i) in row_order.iter_mut().enumerate() {
             *row_order_i = i;
         }
-        row_order.sort_by_key(|&i| morgan_hashes[i]);
+        row_order.sort_by_key(|&i| features[i]);
         let canon = self.create_rearranged(&row_order);
-        let mut sorted_morgan_hashes = [0; N];
-        for (hash, &i_old) in sorted_morgan_hashes.iter_mut().zip(row_order.iter()) {
-            *hash = morgan_hashes[i_old];
+        let mut sorted_features = [0; N];
+        for (hash, &i_old) in sorted_features.iter_mut().zip(row_order.iter()) {
+            *hash = features[i_old];
         }
-        (canon, MatrixHash::new(sorted_morgan_hashes, traces_hash))
+        (canon, MatrixHash::new(sorted_features))
     }
 }
 
@@ -161,22 +156,20 @@ impl_from_matrix_into_hash!(u128); // N <= 16 で常にハッシュが重複し�
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MatrixHash<const N: usize> {
-    morgan_hashes: [u64; N],
-    canonical_morgan_hashes: [u64; N],
-    traces_hash: u64,
+    features: [u64; N],
+    canonical_features: [u64; N],
 }
 
 impl<const N: usize> MatrixHash<N> {
-    fn new(morgan_hashes: [u64; N], traces_hash: u64) -> Self {
-        let canonical_morgan_hashes = Self::canonicalize_hashes(&morgan_hashes);
+    fn new(features: [u64; N]) -> Self {
+        let canonical_features = Self::canonicalize(&features);
         Self {
-            morgan_hashes,
-            canonical_morgan_hashes,
-            traces_hash,
+            features,
+            canonical_features,
         }
     }
 
-    fn canonicalize_hashes(hash_array: &[u64; N]) -> [u64; N] {
+    fn canonicalize(hash_array: &[u64; N]) -> [u64; N] {
         let mut canonicalized = [0; N];
         let mut n = 0;
         let mut memory = hash_array[0];
@@ -191,7 +184,7 @@ impl<const N: usize> MatrixHash<N> {
     }
 
     pub fn generate_row_orders<'a>(&'a self, store: &'a RowOrderStore<N>) -> &Vec<[usize; N]> {
-        store.get(&self.canonical_morgan_hashes).unwrap()
+        store.get(&self.canonical_features).unwrap()
     }
 }
 
