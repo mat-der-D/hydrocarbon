@@ -45,8 +45,8 @@ impl<const N: usize> RowOrderStore<N> {
         let residual = &hash[same_count..];
         let i0 = N - hash.len();
         for perm in (i0..(i0 + same_count)).permutations(same_count) {
-            for (i, &p) in perm.iter().enumerate() {
-                row_order[i0 + i] = p;
+            for (row_order_elem, &p) in row_order[i0..].iter_mut().zip(perm.iter()) {
+                *row_order_elem = p;
             }
             Self::generate_impl(residual, row_order, row_orders);
         }
