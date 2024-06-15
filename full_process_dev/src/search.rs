@@ -27,7 +27,7 @@ impl<const N: usize> RowOrderStore<N> {
         Self { memory }
     }
 
-    fn generate(hash: &[u64]) -> Vec<[usize; N]> {
+    fn generate(hash: &[u64; N]) -> Vec<[usize; N]> {
         let mut row_orders = Vec::new();
         Self::generate_impl(hash, &mut [0; N], &mut row_orders);
         row_orders
