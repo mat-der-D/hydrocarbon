@@ -177,7 +177,7 @@ macro_rules! impl_from_matrix_into_hash {
 impl_from_matrix_into_hash!(u64); // N <= 11 の場合のみハッシュが重複しないことが保証される
 impl_from_matrix_into_hash!(u128); // N <= 16 で常にハッシュが重複しないことが保証される
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy)]
 pub struct MatrixHash<const N: usize> {
     features: [u64; N],
     canonical_features: [u64; N],
@@ -208,6 +208,20 @@ impl<const N: usize> MatrixHash<N> {
 
     pub fn generate_row_orders<'a>(&'a self, store: &'a RowOrderStore<N>) -> &Vec<[usize; N]> {
         store.get(&self.canonical_features).unwrap()
+    }
+}
+
+impl<const N: usize> PartialEq for MatrixHash<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.features == other.features
+    }
+}
+
+impl<const N: usize> Eq for MatrixHash<N> {}
+
+impl<const N: usize> Hash for MatrixHash<N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.features.hash(state);
     }
 }
 
