@@ -49,7 +49,7 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         self.rows[col] ^= 1 << row;
     }
 
-    pub fn create_rearranged(&self, row_order: &[usize]) -> Self {
+    pub fn create_rearranged(&self, row_order: &[usize; N]) -> Self {
         let mut rows_new = [0; N];
         for (row_new, &i_old) in rows_new.iter_mut().zip(row_order.iter()) {
             let row_old = unsafe { self.rows.get_unchecked(i_old) };
