@@ -103,21 +103,19 @@ impl<const N: usize> MatrixSearcher<N> {
     }
 
     fn is_fine_up_to(matrix: &SymmetricBitMatrix<N>, idx_row: usize) -> bool {
-        let mut prev_row = u16::MAX;
-        let mut prev_nbits = 4;
+        let mut prev = 0x4ffff;
         for (i, &row) in matrix
             .rows()
             .iter()
             .enumerate()
             .skip(idx_row.saturating_sub(2))
         {
-            let nbits = row.count_ones();
-            if nbits > prev_nbits || (nbits == prev_nbits && row > prev_row) {
+            let this = (row.count_ones() << 16) | (row as u32);
+            if this > prev {
                 return false;
             }
             if i < idx_row {
-                prev_row = row;
-                prev_nbits = nbits;
+                prev = this;
             }
         }
         idx_row < N - 1 || matrix.is_connected()
