@@ -247,17 +247,12 @@ impl<const N: usize> SymmetricTwoBitsMatrix<N> {
 
     const MAX_BONDS: u32 = if N == 2 { 3 } else { 4 };
     pub fn dehydrogenatable_bonds(&self) -> Vec<(usize, usize)> {
-        fn _count_bonds<const N: usize>(mut row: u32) -> u32 {
-            let mut num_bonds = 0;
-            for _ in 0..N {
-                num_bonds += row & 0b11;
-                row >>= 2;
-            }
-            num_bonds
+        fn _count_bonds<const N: usize>(row: u32) -> u32 {
+            2 * (row & 0xaaaa_aaaa).count_ones() + (row & 0x5555_5555).count_ones()
         }
 
         let mut is_hydrogenatable = [false; N];
-        let mut bonds = Vec::new();
+        let mut bonds = Vec::with_capacity(2 * N);
         for (i, &row) in self.rows.iter().enumerate() {
             if _count_bonds::<N>(row) == Self::MAX_BONDS {
                 continue;
