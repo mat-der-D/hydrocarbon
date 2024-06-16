@@ -83,9 +83,10 @@ impl<const N: usize> SymmetricBitMatrix<N> {
     };
 
     fn calc_features(&self) -> [u64; N] {
-        let mut raw_features = [[0; N]; N];
+        const STEPS: usize = 3;
+        let mut raw_features = [[0; STEPS]; N];
         let mut mat = Self::UNIT_MATRIX;
-        for s in 0..N {
+        for s in 0..N.min(STEPS) {
             let mut new_mat = [[0; N]; N];
 
             for (new_row, row_bits) in new_mat.iter_mut().zip(self.rows.iter()) {
@@ -102,8 +103,8 @@ impl<const N: usize> SymmetricBitMatrix<N> {
             for (i, (raw_feat, new_row)) in raw_features.iter_mut().zip(new_mat.iter()).enumerate()
             {
                 raw_feat[s] = {
-                    let sum: u16 = new_row.iter().sum();
-                    (sum as u32) | (new_row[i] as u32) << 16
+                    let sqsum: u16 = new_row.iter().map(|&x| x * x).sum();
+                    (sqsum as u32) ^ (new_row[i] as u32) << 16
                 };
             }
             mat = new_mat;
