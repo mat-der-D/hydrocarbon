@@ -75,19 +75,23 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         let mut mat = Self::UNIT_MATRIX;
         for s in 0..N {
             let mut new_mat = [[0; N]; N];
-            for (new_row, row) in new_mat.iter_mut().zip(mat.iter()) {
-                for (new_row_elem, row_bits) in new_row.iter_mut().zip(self.rows.iter()) {
-                    *new_row_elem = row
-                        .iter()
-                        .enumerate()
-                        .map(|(j, elem)| elem * ((row_bits >> j) & 1))
-                        .sum();
+
+            for (new_row, row_bits) in new_mat.iter_mut().zip(self.rows.iter()) {
+                for (j, row) in mat.iter().enumerate() {
+                    if row_bits & 1 << j == 0 {
+                        continue;
+                    }
+                    for (new_elem, elem) in new_row.iter_mut().zip(row.iter()) {
+                        *new_elem += elem;
+                    }
                 }
             }
-            for (i, (raw_feat, row)) in raw_features.iter_mut().zip(new_mat.iter()).enumerate() {
+
+            for (i, (raw_feat, new_row)) in raw_features.iter_mut().zip(new_mat.iter()).enumerate()
+            {
                 raw_feat[s] = {
-                    let sum: u16 = row.iter().sum();
-                    (sum as u32) | (row[i] as u32) << 16
+                    let sum: u16 = new_row.iter().sum();
+                    (sum as u32) | (new_row[i] as u32) << 16
                 };
             }
             mat = new_mat;
