@@ -83,7 +83,7 @@ impl<const N: usize> SymmetricBitMatrix<N> {
     };
 
     fn calc_features(&self) -> [u64; N] {
-        const STEPS: usize = 3;
+        const STEPS: usize = 5;
         let mut raw_features = [[0; STEPS]; N];
         let mut mat = Self::UNIT_MATRIX;
         for s in 0..N.min(STEPS) {
