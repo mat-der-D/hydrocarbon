@@ -102,14 +102,14 @@ impl<const N: usize> MatrixSearcher<N> {
 
         // 0 を入れる場合
         let mut conf_mut = conf;
-        if next_row == row || Self::is_fine_up_to(&self.matrix, next_row, true, &mut conf_mut) {
+        if next_row == row || Self::is_fine_up_to(&self.matrix, row, next_row, &mut conf_mut) {
             self.search_impl(next_row, next_col, f, conf_mut); // 次の最終確定行は直前の is_fine_up_to の結果を使う
         }
         self.matrix.flip(row, col);
 
         // 1 を入れる場合
         let mut conf_mut = conf;
-        if Self::is_fine_up_to(&self.matrix, next_row, next_row != row, &mut conf_mut) {
+        if Self::is_fine_up_to(&self.matrix, row, next_row, &mut conf_mut) {
             self.search_impl(next_row, next_col, f, conf_mut); // 次の最終確定行は直前の is_fine_up_to の結果を使う
         }
         self.matrix.flip(row, col);
@@ -117,21 +117,20 @@ impl<const N: usize> MatrixSearcher<N> {
 
     fn is_fine_up_to(
         matrix: &SymmetricBitMatrix<N>,
-        idx_row: usize,
-        check_prev_row: bool,
+        row: usize,
+        next_row: usize,
         conf: &mut u32, // 最終確定行の情報を保持する. 前半はノードの次数, 後半は隣接ノードの情報
     ) -> bool {
-        let num_skip = idx_row.saturating_sub(check_prev_row as usize);
-        for (i, &row) in matrix.rows().iter().enumerate().skip(num_skip) {
-            let this = (row.count_ones() << 16) | (row as u32);
+        for (i, &row_bits) in matrix.rows().iter().enumerate().skip(row) {
+            let this = (row_bits.count_ones() << 16) | (row_bits as u32);
             if this > *conf {
                 return false;
             }
-            if i < idx_row {
+            if i < next_row {
                 *conf = this;
             }
         }
-        idx_row < N - 1 || matrix.is_connected()
+        next_row < N - 1 || matrix.is_connected()
     }
 }
 
