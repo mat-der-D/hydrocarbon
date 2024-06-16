@@ -87,19 +87,23 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         let mut mat = Self::UNIT_MATRIX;
         for s in 0..N {
             let mut new_mat = [[0; N]; N];
-            for (new_row, row) in new_mat.iter_mut().zip(mat.iter()) {
-                for (new_row_elem, row_bits) in new_row.iter_mut().zip(self.rows.iter()) {
-                    *new_row_elem = row
-                        .iter()
-                        .enumerate()
-                        .map(|(j, elem)| elem * ((row_bits >> j) & 1))
-                        .sum();
+
+            for (new_row, row_bits) in new_mat.iter_mut().zip(self.rows.iter()) {
+                for (j, row) in mat.iter().enumerate() {
+                    if row_bits & 1 << j == 0 {
+                        continue;
+                    }
+                    for (new_elem, elem) in new_row.iter_mut().zip(row.iter()) {
+                        *new_elem += elem;
+                    }
                 }
             }
-            for (i, (raw_feat, row)) in raw_features.iter_mut().zip(new_mat.iter()).enumerate() {
+
+            for (i, (raw_feat, new_row)) in raw_features.iter_mut().zip(new_mat.iter()).enumerate()
+            {
                 raw_feat[s] = {
-                    let sum: u16 = row.iter().sum();
-                    (sum as u32) | (row[i] as u32) << 16
+                    let sum: u16 = new_row.iter().sum();
+                    (sum as u32) | (new_row[i] as u32) << 16
                 };
             }
             mat = new_mat;
@@ -262,17 +266,12 @@ impl<const N: usize> SymmetricTwoBitsMatrix<N> {
 
     const MAX_BONDS: u32 = if N == 2 { 3 } else { 4 };
     pub fn dehydrogenatable_bonds(&self) -> Vec<(usize, usize)> {
-        fn _count_bonds<const N: usize>(mut row: u32) -> u32 {
-            let mut num_bonds = 0;
-            for _ in 0..N {
-                num_bonds += row & 0b11;
-                row >>= 2;
-            }
-            num_bonds
+        fn _count_bonds<const N: usize>(row: u32) -> u32 {
+            2 * (row & 0xaaaa_aaaa).count_ones() + (row & 0x5555_5555).count_ones()
         }
 
         let mut is_hydrogenatable = [false; N];
-        let mut bonds = Vec::new();
+        let mut bonds = Vec::with_capacity(2 * N);
         for (i, &row) in self.rows.iter().enumerate() {
             if _count_bonds::<N>(row) == Self::MAX_BONDS {
                 continue;
