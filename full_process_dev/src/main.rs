@@ -1,13 +1,43 @@
-use std::{collections::BTreeMap, sync};
+use std::{collections::BTreeMap, hash::Hash, sync};
 
 use dehydrogenate::generate_all_dehydrogenated;
 use fxhash::FxHashMap;
-use itertools::Itertools;
 use search::{make_unique, MatrixSearcher, RowOrderStore};
 
 mod dehydrogenate;
 mod matrix;
 mod search;
+
+#[derive(Debug)]
+pub struct FxHashMapChunkIter<K, V> {
+    iter: std::collections::hash_map::IntoIter<K, V>,
+    chunk_size: usize,
+}
+
+impl<K, V> FxHashMapChunkIter<K, V> {
+    pub fn new(map: FxHashMap<K, V>, chunk_size: usize) -> Self {
+        Self {
+            iter: map.into_iter(),
+            chunk_size,
+        }
+    }
+}
+
+impl<K, V> Iterator for FxHashMapChunkIter<K, V>
+where
+    K: Eq + Hash,
+{
+    type Item = FxHashMap<K, V>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let map: FxHashMap<K, V> = (&mut self.iter).take(self.chunk_size).collect();
+        if map.is_empty() {
+            None
+        } else {
+            Some(map)
+        }
+    }
+}
 
 fn generate_hydrocarbons<const N: usize>(num_threads: usize) {
     if N > 16 {
@@ -23,12 +53,7 @@ fn generate_hydrocarbons<const N: usize>(num_threads: usize) {
     let store = sync::Arc::new(RowOrderStore::<N>::new());
     let mut handlers = Vec::new();
     let chunk_size = hash2mat.len().div_ceil(num_threads);
-    for sub_hash2mat in hash2mat
-        .into_iter()
-        .chunks(chunk_size)
-        .into_iter()
-        .map(|c| c.collect::<FxHashMap<_, _>>())
-    {
+    for sub_hash2mat in FxHashMapChunkIter::new(hash2mat, chunk_size) {
         let store = store.clone();
         let handler = std::thread::spawn(move || {
             let mut all_mats = Vec::new();
