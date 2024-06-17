@@ -47,10 +47,10 @@ fn generate_hydrocarbons<const N: usize>(num_threads: usize) {
         });
         handlers.push(handler);
     }
-    let all_mats = handlers
+    let all_mats: Vec<_> = handlers
         .into_iter()
         .flat_map(|h| h.join().unwrap())
-        .collect_vec();
+        .collect();
 
     // 結果表示用の集計
     let mut num_h_to_count = BTreeMap::new();
