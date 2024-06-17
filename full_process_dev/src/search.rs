@@ -1,6 +1,4 @@
-use std::hash::Hash;
-
-use fxhash::{FxHashMap, FxHashSet};
+use fxhash::FxHashMap;
 
 use crate::matrix::{MatrixHash, SymmetricBitMatrix};
 
