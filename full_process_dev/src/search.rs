@@ -1,7 +1,52 @@
-use fxhash::FxHashMap;
-use itertools::Itertools;
+use std::hash::Hash;
+
+use fxhash::{FxHashMap, FxHashSet};
 
 use crate::matrix::{MatrixHash, SymmetricBitMatrix};
+
+#[derive(Debug, Clone)]
+struct PermutationGenerator {
+    current: Vec<usize>,
+    is_first: bool,
+}
+
+impl PermutationGenerator {
+    fn from_start_count(start: usize, count: usize) -> Self {
+        let current = (start..(start + count)).collect();
+        Self {
+            current,
+            is_first: true,
+        }
+    }
+}
+
+impl Iterator for PermutationGenerator {
+    type Item = Vec<usize>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.is_first {
+            self.is_first = false;
+            return Some(self.current.clone());
+        }
+
+        let mut i = self.current.len() - 1;
+        while i > 0 && self.current[i - 1] >= self.current[i] {
+            i -= 1;
+        }
+        if i == 0 {
+            return None;
+        }
+
+        let mut j = self.current.len() - 1;
+        while self.current[j] <= self.current[i - 1] {
+            j -= 1;
+        }
+
+        self.current.swap(i - 1, j);
+        self.current[i..].reverse();
+        Some(self.current.clone())
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct RowOrderStore<const N: usize> {
@@ -42,7 +87,7 @@ impl<const N: usize> RowOrderStore<N> {
         let same_count = hash.iter().take_while(|&&x| x == hash[0]).count();
         let residual = &hash[same_count..];
         let i0 = N - hash.len();
-        for perm in (i0..(i0 + same_count)).permutations(same_count) {
+        for perm in PermutationGenerator::from_start_count(i0, same_count) {
             for (row_order_elem, &p) in row_order[i0..].iter_mut().zip(perm.iter()) {
                 *row_order_elem = p;
             }
@@ -103,13 +148,15 @@ impl<const N: usize> MatrixSearcher<N> {
         if next_row == row || Self::is_fine_up_to(&self.matrix, row, next_row, &mut conf_mut) {
             self.search_impl(next_row, next_col, f, conf_mut); // 次の最終確定行は直前の is_fine_up_to の結果を使う
         }
-        self.matrix.flip(row, col);
 
         // 1 を入れる場合
+        self.matrix.flip(row, col);
         let mut conf_mut = conf;
         if Self::is_fine_up_to(&self.matrix, row, next_row, &mut conf_mut) {
             self.search_impl(next_row, next_col, f, conf_mut); // 次の最終確定行は直前の is_fine_up_to の結果を使う
         }
+
+        // リセット
         self.matrix.flip(row, col);
     }
 
