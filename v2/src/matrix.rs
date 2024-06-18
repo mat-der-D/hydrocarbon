@@ -146,15 +146,62 @@ pub struct HydroCarbonMatrixIter<const N: usize> {
     row_hashes: [u32; N],
     row: usize,
     col: usize,
+    min_row: usize,
+    min_col: usize,
+}
+
+impl<const N: usize> Default for HydroCarbonMatrixIter<N> {
+    fn default() -> Self {
+        Self::from_matrix(SymmetricBitMatrix::zero(), 0, 1)
+    }
 }
 
 impl<const N: usize> HydroCarbonMatrixIter<N> {
-    pub fn new() -> Self {
+    pub fn create_multi(digits: usize) -> Vec<Self> {
+        fn _next_row_col<const N: usize>(row: usize, col: usize) -> (usize, usize) {
+            if col == N - 1 {
+                (row + 1, row + 2)
+            } else {
+                (row, col + 1)
+            }
+        }
+
+        if digits > N * (N - 1) / 2 {
+            panic!("Too many digits");
+        }
+
+        let n_max = 1 << digits;
+        let mut iters = Vec::with_capacity(n_max);
+
+        for n in 0..n_max {
+            let mut mat = SymmetricBitMatrix::zero();
+            let mut row = 0;
+            let mut col = 1;
+            for i in 0..digits {
+                if n & 1 << i != 0 {
+                    mat.flip(row, col);
+                }
+                (row, col) = _next_row_col::<N>(row, col);
+            }
+            let iter = Self::from_matrix(mat, row, col); // 一個ずれてる？
+            iters.push(iter);
+        }
+
+        iters
+    }
+
+    fn from_matrix(mat: SymmetricBitMatrix<N>, min_row: usize, min_col: usize) -> Self {
+        let mut row_hashes = [0; N];
+        for (hash, &row) in row_hashes.iter_mut().zip(mat.rows.iter()).take(min_row) {
+            *hash = (row.count_ones() << 16) | (row as u32);
+        }
         Self {
-            current: SymmetricBitMatrix::zero(),
-            row_hashes: [0; N],
-            row: 0,
-            col: 1,
+            current: mat,
+            row_hashes,
+            row: min_row,
+            col: min_col,
+            min_row,
+            min_col,
         }
     }
 
@@ -196,7 +243,7 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
     }
 
     fn step_backward(&mut self) -> bool {
-        if (self.row, self.col) == (0, 1) {
+        if (self.row, self.col) == (self.min_row, self.min_col) {
             return false;
         }
         if self.col == self.row + 1 {
