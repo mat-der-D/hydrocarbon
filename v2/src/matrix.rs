@@ -159,20 +159,24 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
     }
 
     fn is_fine(&mut self) -> bool {
+        if self.col != N - 1 && self.current.bit_at(self.row, self.col) == 0 {
+            return true;
+        }
+
         let next_row = self.row + (self.col == N - 1) as usize;
         let mut prev = if self.row == 0 {
-            &mut 0x4f000
+            0x4f000
         } else {
-            &mut self.row_hashes[self.row - 1]
+            self.row_hashes[self.row - 1]
         };
-        for (i, row) in self.current.rows.iter().enumerate().skip(self.row) {
-            let this = (row.count_ones() << 16) | (*row as u32);
-            if this > *prev {
+        for (i, &row) in self.current.rows.iter().enumerate().skip(self.row) {
+            let this = (row.count_ones() << 16) | (row as u32);
+            if this > prev {
                 return false;
             }
             if i < next_row {
-                prev = &mut self.row_hashes[self.row];
-                *prev = this;
+                prev = this;
+                self.row_hashes[i] = this;
             }
         }
         self.row < N - 2 || self.current.is_connected()
