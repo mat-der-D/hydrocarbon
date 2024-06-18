@@ -1,13 +1,50 @@
-use fxhash::FxHashMap;
-use matrix::HydroCarbonMatrixIter;
-
 mod matrix;
+mod multi_bond;
+mod ordering;
+mod single_bond;
 
-fn main() {
-    const N: usize = 10;
-    let instant = std::time::Instant::now();
-    let digits = 7;
+use std::{collections::BTreeMap, hash::Hash, sync::Arc};
 
+use fxhash::FxHashMap;
+use matrix::{HydroCarbonMatrixIter, MatrixHash, SymmetricBitMatrix};
+use multi_bond::generate_all_dehydrogenated;
+use ordering::RowOrderStore;
+use single_bond::make_unique;
+
+#[derive(Debug)]
+pub struct FxHashMapChunkIter<K, V> {
+    iter: std::collections::hash_map::IntoIter<K, V>,
+    chunk_size: usize,
+}
+
+impl<K, V> FxHashMapChunkIter<K, V> {
+    pub fn new(map: FxHashMap<K, V>, chunk_size: usize) -> Self {
+        Self {
+            iter: map.into_iter(),
+            chunk_size,
+        }
+    }
+}
+
+impl<K, V> Iterator for FxHashMapChunkIter<K, V>
+where
+    K: Eq + Hash,
+{
+    type Item = FxHashMap<K, V>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let map: FxHashMap<K, V> = (&mut self.iter).take(self.chunk_size).collect();
+        if map.is_empty() {
+            None
+        } else {
+            Some(map)
+        }
+    }
+}
+
+fn gather_hash2mats<const N: usize>(
+    digits: usize,
+) -> FxHashMap<MatrixHash<N>, Vec<SymmetricBitMatrix<N>>> {
     let mut handlers = Vec::new();
     let iters = HydroCarbonMatrixIter::<N>::create_multi(digits);
     for iter in iters {
@@ -32,7 +69,68 @@ fn main() {
         }
     }
 
-    println!("# of keys: {}", hash2mats.len());
+    hash2mats
+}
 
-    println!("{:?}", instant.elapsed());
+fn generate_hydrocarbons<const N: usize>(num_threads: usize, num_digits: usize) {
+    if N > 16 {
+        panic!("N must be less than or equal to 16");
+    }
+    let hash2mat = gather_hash2mats::<N>(num_digits.min(N));
+    let store = Arc::new(RowOrderStore::<N>::new());
+
+    let mut handlers = Vec::new();
+    let chunk_size = hash2mat.len().div_ceil(num_threads);
+    for sub_hash2mat in FxHashMapChunkIter::new(hash2mat, chunk_size) {
+        let store = store.clone();
+        let handler = std::thread::spawn(move || {
+            let mut all_mats = Vec::new();
+            for (hash, mats) in sub_hash2mat {
+                let unique_mat_syms = if N <= 11 {
+                    make_unique::<N, u64>(&mats, &hash, &store)
+                } else {
+                    make_unique::<N, u128>(&mats, &hash, &store)
+                };
+                for (mat, symmetry) in unique_mat_syms {
+                    let dehydrogenated = generate_all_dehydrogenated(mat.into(), &symmetry);
+                    all_mats.extend(dehydrogenated);
+                }
+            }
+            all_mats
+        });
+        handlers.push(handler);
+    }
+    let all_mats: Vec<_> = handlers
+        .into_iter()
+        .flat_map(|h| h.join().unwrap())
+        .collect();
+
+    // 結果表示用の集計
+    let mut num_h_to_count = BTreeMap::new();
+    for mat in all_mats {
+        let num_h = mat.count_hydrogen();
+        *num_h_to_count.entry(num_h).or_insert(0u32) += 1;
+    }
+
+    // 結果表示
+    println!("===== [C = {N:>2}] =====");
+    println!("#H: # of structures");
+    for (num_h, count) in num_h_to_count {
+        println!("{:>2}: {}", num_h, count);
+    }
+}
+
+const NUM_THREADS: usize = 128;
+
+macro_rules! generate_hydrocarbons_many {
+    ($($n:expr),+;$d:expr) => {
+        $(
+            generate_hydrocarbons::<$n>(NUM_THREADS, $d);
+        )*
+    };
+}
+
+fn main() {
+    let digits = 7;
+    generate_hydrocarbons_many!(4, 5, 6, 7, 8, 9, 10; digits);
 }

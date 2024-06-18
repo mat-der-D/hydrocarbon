@@ -2,6 +2,8 @@ use std::hash::{Hash, Hasher};
 
 use fxhash::FxHasher;
 
+use crate::ordering::RowOrderStore;
+
 #[derive(Debug, Clone, Copy)]
 pub struct SymmetricBitMatrix<const N: usize> {
     rows: [u16; N],
@@ -359,9 +361,9 @@ impl<const N: usize> MatrixHash<N> {
         canonicalized
     }
 
-    // pub fn generate_row_orders<'a>(&'a self, store: &'a RowOrderStore<N>) -> &Vec<[usize; N]> {
-    //     store.get(&self.canonical_features).unwrap()
-    // }
+    pub fn generate_row_orders<'a>(&'a self, store: &'a RowOrderStore<N>) -> &Vec<[usize; N]> {
+        store.get(&self.canonical_features).unwrap()
+    }
 }
 
 impl<const N: usize> PartialEq for MatrixHash<N> {
@@ -375,5 +377,70 @@ impl<const N: usize> Eq for MatrixHash<N> {}
 impl<const N: usize> Hash for MatrixHash<N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.features.hash(state);
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SymmetricTwoBitsMatrix<const N: usize> {
+    rows: [u32; N],
+}
+
+impl<const N: usize> SymmetricTwoBitsMatrix<N> {
+    pub fn create_rearranged(&self, row_order: &[usize]) -> Self {
+        let mut rows_new = [0; N];
+        for (row_new, i_old) in rows_new.iter_mut().zip(row_order.iter()) {
+            let row_old = unsafe { self.rows.get_unchecked(*i_old) };
+            for (j_new, j_old) in row_order.iter().enumerate() {
+                *row_new |= (row_old >> (2 * j_old) & 0b11) << (2 * j_new);
+            }
+        }
+        Self { rows: rows_new }
+    }
+
+    fn count_bonds(row: u32) -> u32 {
+        2 * (row & 0xaaaa_aaaa).count_ones() + (row & 0x5555_5555).count_ones()
+    }
+
+    pub fn count_hydrogen(&self) -> u32 {
+        let num_c: u32 = self.rows.iter().map(|&row| Self::count_bonds(row)).sum();
+        4 * N as u32 - num_c
+    }
+
+    pub fn create_dehydrogenated_unchecked(&self, row: usize, col: usize) -> Self {
+        let mut new_matrix = *self;
+        new_matrix.rows[row] += 1 << (2 * col);
+        new_matrix.rows[col] += 1 << (2 * row);
+        new_matrix
+    }
+
+    const MAX_BONDS: u32 = if N == 2 { 3 } else { 4 };
+    pub fn dehydrogenatable_bonds(&self) -> Vec<(usize, usize)> {
+        let mut is_hydrogenatable = [false; N];
+        let mut bonds = Vec::with_capacity(2 * N);
+        for (i, &row) in self.rows.iter().enumerate() {
+            if Self::count_bonds(row) == Self::MAX_BONDS {
+                continue;
+            }
+            is_hydrogenatable[i] = true;
+            for (j, able) in is_hydrogenatable.iter().enumerate().take(i) {
+                if *able && row & (0b11 << (2 * j)) != 0 {
+                    bonds.push((i, j));
+                }
+            }
+        }
+        bonds
+    }
+}
+
+impl<const N: usize> From<SymmetricBitMatrix<N>> for SymmetricTwoBitsMatrix<N> {
+    fn from(mat: SymmetricBitMatrix<N>) -> Self {
+        let mut rows = [0; N];
+        for (&row, row_new) in mat.rows.iter().zip(rows.iter_mut()) {
+            let row_u32 = row as u32;
+            for i in 0..N {
+                *row_new |= (row_u32 << i) & (1 << (2 * i));
+            }
+        }
+        Self { rows }
     }
 }
