@@ -152,7 +152,7 @@ pub struct HydroCarbonMatrixIter<const N: usize> {
 
 impl<const N: usize> Default for HydroCarbonMatrixIter<N> {
     fn default() -> Self {
-        Self::from_matrix(SymmetricBitMatrix::zero(), 0, 1)
+        Self::try_from_matrix(SymmetricBitMatrix::zero(), 0, 1).unwrap()
     }
 }
 
@@ -183,26 +183,37 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
                 }
                 (row, col) = _next_row_col::<N>(row, col);
             }
-            let iter = Self::from_matrix(mat, row, col); // 一個ずれてる？
-            iters.push(iter);
+            if let Ok(iter) = Self::try_from_matrix(mat, row, col) {
+                iters.push(iter);
+            }
         }
 
         iters
     }
 
-    fn from_matrix(mat: SymmetricBitMatrix<N>, min_row: usize, min_col: usize) -> Self {
+    fn try_from_matrix(
+        mat: SymmetricBitMatrix<N>,
+        min_row: usize,
+        min_col: usize,
+    ) -> Result<Self, &'static str> {
         let mut row_hashes = [0; N];
         for (hash, &row) in row_hashes.iter_mut().zip(mat.rows.iter()).take(min_row) {
             *hash = (row.count_ones() << 16) | (row as u32);
         }
-        Self {
+        for (i, &row) in row_hashes.iter().enumerate().take(min_row) {
+            if i == 0 && row > 0x4f000 || i != 0 && row > row_hashes[i - 1] {
+                return Err("Invalid matrix");
+            }
+        }
+
+        Ok(Self {
             current: mat,
             row_hashes,
             row: min_row,
             col: min_col,
             min_row,
             min_col,
-        }
+        })
     }
 
     fn is_fine(&mut self) -> bool {
