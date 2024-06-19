@@ -42,20 +42,30 @@ where
     }
 }
 
+fn gather_hash2mats_single_thread<const N: usize>(
+) -> FxHashMap<MatrixHash<N>, Vec<SymmetricBitMatrix<N>>> {
+    let iter = HydroCarbonMatrixIter::<N>::default();
+    collect_hash2mats(iter)
+}
+
+fn collect_hash2mats<const N: usize>(
+    iter: impl IntoIterator<Item = SymmetricBitMatrix<N>>,
+) -> FxHashMap<MatrixHash<N>, Vec<SymmetricBitMatrix<N>>> {
+    let mut hash2mats = FxHashMap::default();
+    for mat in iter {
+        let (mat, hash) = mat.canonicalize();
+        hash2mats.entry(hash).or_insert_with(Vec::new).push(mat);
+    }
+    hash2mats
+}
+
 fn gather_hash2mats<const N: usize>(
     digits: usize,
 ) -> FxHashMap<MatrixHash<N>, Vec<SymmetricBitMatrix<N>>> {
     let mut handlers = Vec::new();
     let iters = HydroCarbonMatrixIter::<N>::create_multi(digits);
     for iter in iters {
-        handlers.push(std::thread::spawn(move || {
-            let mut hash2mats = FxHashMap::default();
-            for mat in iter {
-                let (mat, hash) = mat.canonicalize();
-                hash2mats.entry(hash).or_insert_with(Vec::new).push(mat);
-            }
-            hash2mats
-        }));
+        handlers.push(std::thread::spawn(move || collect_hash2mats(iter)));
     }
 
     let mut hash2mats = FxHashMap::default();
@@ -73,11 +83,13 @@ fn gather_hash2mats<const N: usize>(
 }
 
 fn generate_hydrocarbons<const N: usize>(num_threads: usize, num_digits: usize) {
-    if N > 16 {
-        panic!("N must be less than or equal to 16");
-    }
-    let hash2mat = gather_hash2mats::<N>(num_digits.min(N));
-    let store = Arc::new(RowOrderStore::<N>::new());
+    let hash2mat = match N {
+        0 => panic!("N must be greater than 0"),
+        17.. => panic!("N must be less than or equal to 16"),
+        1..=3 => gather_hash2mats_single_thread::<N>(),
+        _ => gather_hash2mats::<N>(num_digits),
+    };
+    let store = Arc::new(RowOrderStore::<N>::new_parallel(num_threads as u64));
 
     let mut handlers = Vec::new();
     let chunk_size = hash2mat.len().div_ceil(num_threads);
@@ -132,5 +144,5 @@ macro_rules! generate_hydrocarbons_many {
 
 fn main() {
     let digits = 7;
-    generate_hydrocarbons_many!(4, 5, 6, 7, 8, 9, 10; digits);
+    generate_hydrocarbons_many!(2, 3, 4, 5, 6, 7, 8, 9, 10; digits); // TODO: N = 1 に対応する
 }

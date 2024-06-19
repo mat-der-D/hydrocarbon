@@ -168,10 +168,7 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
             }
         }
 
-        if digits > N * (N - 1) / 2 {
-            panic!("Too many digits");
-        }
-
+        let digits = digits.min(N * (N - 1) / 2 - 1);
         let n_max = 1 << digits;
         let mut iters = Vec::with_capacity(n_max);
 
@@ -243,7 +240,7 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
     }
 
     fn step_forward(&mut self) -> bool {
-        if self.row == N - 2 {
+        if self.row >= N - 2 {
             return false;
         }
         if self.col == N - 1 {

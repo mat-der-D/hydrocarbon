@@ -58,14 +58,44 @@ impl<const N: usize> Default for RowOrderStore<N> {
 impl<const N: usize> RowOrderStore<N> {
     pub fn new() -> Self {
         let mut memory = FxHashMap::default();
-        let mut hash_array = [0; N];
         for deltas in 0..(1 << (N - 1)) {
-            for n in 0..(N - 1) {
-                hash_array[n + 1] = hash_array[n] + (deltas >> n & 1);
-            }
+            let hash_array = Self::deltas_to_hash_array(deltas);
             memory.insert(hash_array, Self::generate(&hash_array));
         }
         Self { memory }
+    }
+
+    pub fn new_parallel(num_threads: u64) -> Self {
+        let mut handlers = Vec::new();
+        for i in 0..num_threads {
+            let handler = std::thread::spawn(move || {
+                let mut memory = FxHashMap::default();
+                for deltas in (0..(1 << (N - 1))).filter(|x| x % num_threads == i) {
+                    let hash_array = Self::deltas_to_hash_array(deltas);
+                    memory.insert(hash_array, Self::generate(&hash_array));
+                }
+                memory
+            });
+            handlers.push(handler);
+        }
+
+        let mut memory = FxHashMap::default();
+
+        for handler in handlers {
+            let partial_memory = handler.join().unwrap();
+            for (key, value) in partial_memory {
+                memory.insert(key, value);
+            }
+        }
+        Self { memory }
+    }
+
+    fn deltas_to_hash_array(deltas: u64) -> [u64; N] {
+        let mut hash_array = [0; N];
+        for n in 0..(N - 1) {
+            hash_array[n + 1] = hash_array[n] + (deltas >> n & 1);
+        }
+        hash_array
     }
 
     fn generate(hash: &[u64; N]) -> Vec<[usize; N]> {
