@@ -3,10 +3,11 @@ mod multi_bond;
 mod ordering;
 mod single_bond;
 
+use core::panic;
 use std::{collections::BTreeMap, hash::Hash, sync::Arc};
 
 use fxhash::FxHashMap;
-use matrix::{HydroCarbonMatrixIter, MatrixHash, SymmetricBitMatrix};
+use matrix::{HydroCarbonMatrixIter, MatrixHash, SymmetricBitMatrix, SymmetricTwoBitsMatrix};
 use multi_bond::generate_all_dehydrogenated;
 use ordering::RowOrderStore;
 use single_bond::make_unique;
@@ -82,11 +83,30 @@ fn gather_hash2mats<const N: usize>(
     hash2mats
 }
 
+fn generate_hydrocarbons_from_hash2mats<const N: usize>(
+    hash2mats: FxHashMap<MatrixHash<N>, Vec<SymmetricBitMatrix<N>>>,
+    store: &RowOrderStore<N>,
+) -> Vec<SymmetricTwoBitsMatrix<N>> {
+    let mut all_mats = Vec::new();
+    for (hash, mats) in hash2mats {
+        let unique_mat_syms = if N <= 11 {
+            make_unique::<N, u64>(&mats, &hash, &store)
+        } else {
+            make_unique::<N, u128>(&mats, &hash, &store)
+        };
+        for (mat, symmetry) in unique_mat_syms {
+            let dehydrogenated = generate_all_dehydrogenated(mat.into(), &symmetry);
+            all_mats.extend(dehydrogenated);
+        }
+    }
+    all_mats
+}
+
 fn generate_hydrocarbons<const N: usize>(num_threads: usize, num_digits: usize) {
     let hash2mat = match N {
         0 => panic!("N must be greater than 0"),
         17.. => panic!("N must be less than or equal to 16"),
-        1..=3 => gather_hash2mats_single_thread::<N>(),
+        1 => gather_hash2mats_single_thread::<N>(),
         _ => gather_hash2mats::<N>(num_digits),
     };
     let store = Arc::new(RowOrderStore::<N>::new_parallel(num_threads as u64));
@@ -95,24 +115,11 @@ fn generate_hydrocarbons<const N: usize>(num_threads: usize, num_digits: usize) 
     let chunk_size = hash2mat.len().div_ceil(num_threads);
     for sub_hash2mat in FxHashMapChunkIter::new(hash2mat, chunk_size) {
         let store = store.clone();
-        let handler = std::thread::spawn(move || {
-            let mut all_mats = Vec::new();
-            for (hash, mats) in sub_hash2mat {
-                let unique_mat_syms = if N <= 11 {
-                    make_unique::<N, u64>(&mats, &hash, &store)
-                } else {
-                    make_unique::<N, u128>(&mats, &hash, &store)
-                };
-                for (mat, symmetry) in unique_mat_syms {
-                    let dehydrogenated = generate_all_dehydrogenated(mat.into(), &symmetry);
-                    all_mats.extend(dehydrogenated);
-                }
-            }
-            all_mats
-        });
-        handlers.push(handler);
+        handlers.push(std::thread::spawn(move || {
+            generate_hydrocarbons_from_hash2mats(sub_hash2mat, &store)
+        }));
     }
-    let all_mats: Vec<_> = handlers
+    let all_mats: Vec<SymmetricTwoBitsMatrix<N>> = handlers
         .into_iter()
         .flat_map(|h| h.join().unwrap())
         .collect();
