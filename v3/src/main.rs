@@ -124,20 +124,31 @@ fn generate_hydrocarbons<const N: usize>(
     Ok(mats)
 }
 
-fn main() -> anyhow::Result<()> {
-    let instant = std::time::Instant::now();
-    let mats = generate_hydrocarbons::<1>(0, 128)?;
-
+fn display_counts<const N: usize>(mats: &[SymmetricTwoBitsMatrix<N>]) {
     let mut num_h_to_count = BTreeMap::new();
     for mat in mats {
         let num_h = mat.count_hydrogen();
         *num_h_to_count.entry(num_h).or_insert(0) += 1;
     }
 
+    println!("===== [C = {N:>2}] =====");
     println!("#H: #HydroCarbods");
     for (num_h, count) in num_h_to_count {
         println!("{:>2}: {}", num_h, count);
     }
-    println!("Elapsed: {:?}", instant.elapsed());
+}
+
+macro_rules! run_many {
+    ($($n:expr),+;max_digits=$max_digits:expr;num_threads=$num_threads:expr) => {
+        $(
+            let digits = $max_digits.min($n * ($n - 1) / 2);
+            let mat = generate_hydrocarbons::<$n>(digits, $num_threads)?;
+            display_counts(&mat);
+        )*
+    };
+}
+
+fn main() -> anyhow::Result<()> {
+    run_many!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10; max_digits=7; num_threads=128);
     Ok(())
 }
