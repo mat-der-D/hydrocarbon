@@ -149,6 +149,7 @@ macro_rules! run_many {
 }
 
 fn main() -> anyhow::Result<()> {
-    run_many!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10; max_digits=7; num_threads=128);
+    run_many!(1, 2, 3, 4, 5, 6, 7, 8; max_digits=7; num_threads=16);
+    run_many!(9, 10; max_digits=7; num_threads=128);
     Ok(())
 }
