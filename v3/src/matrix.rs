@@ -169,6 +169,18 @@ macro_rules! impl_from_matrix_into_hash {
 impl_from_matrix_into_hash!(u64); // N <= 11 の場合のみハッシュが重複しないことが保証される
 impl_from_matrix_into_hash!(u128); // N <= 16 で常にハッシュが重複しないことが保証される
 
+impl<const N: usize> std::fmt::Display for SymmetricBitMatrix<N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for row in self.rows.iter() {
+            for i in 0..N {
+                write!(f, "{}", row >> i & 1)?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct MatrixFeatures<const N: usize> {
     features: [u64; N],
@@ -429,8 +441,9 @@ impl<const N: usize> From<SymmetricBitMatrix<N>> for SymmetricTwoBitsMatrix<N> {
     fn from(matrix: SymmetricBitMatrix<N>) -> Self {
         let mut rows = [0; N];
         for (new_row, &old_row) in rows.iter_mut().zip(matrix.rows.iter()) {
+            let old_row_u32 = old_row as u32;
             for i in 0..N {
-                *new_row = ((old_row as u32) << i) & (1 << (2 * i));
+                *new_row |= (old_row_u32 << i) & (1 << (2 * i));
             }
         }
         Self { rows }

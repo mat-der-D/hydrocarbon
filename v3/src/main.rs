@@ -3,7 +3,7 @@ mod matrix;
 mod ordering;
 mod uniquify;
 
-use std::{hash::Hash, sync::Arc};
+use std::{collections::BTreeMap, hash::Hash, sync::Arc};
 
 use dehydrogenate::generate_dehydrogenated;
 use fxhash::FxHashMap;
@@ -127,8 +127,18 @@ fn generate_hydrocarbons<const N: usize>(
 
 fn main() -> anyhow::Result<()> {
     let instant = std::time::Instant::now();
-    let mats = generate_hydrocarbons::<10>(7, 128)?;
-    println!("# of mats: {}", mats.len());
+    let mats = generate_hydrocarbons::<4>(0, 1)?;
+
+    let mut num_h_to_count = BTreeMap::new();
+    for mat in mats {
+        let num_h = mat.count_hydrogen();
+        *num_h_to_count.entry(num_h).or_insert(0) += 1;
+    }
+
+    println!("#H: #HydroCarbods");
+    for (num_h, count) in num_h_to_count {
+        println!("{:>2}: {}", num_h, count);
+    }
     println!("Elapsed: {:?}", instant.elapsed());
     Ok(())
 }
