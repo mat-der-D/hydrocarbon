@@ -58,22 +58,6 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         Self { rows }
     }
 
-    // TODO: 演算子オーバーロードで表現できないか検討
-    fn multiply(&self, other: &[[u16; N]; N]) -> [[u16; N]; N] {
-        let mut out = [[0; N]; N];
-        for (out_row, &row_bits) in out.iter_mut().zip(self.rows.iter()) {
-            for (j, row) in other.iter().enumerate() {
-                if row_bits & 1 << j == 0 {
-                    continue;
-                }
-                for (out_elem, &elem) in out_row.iter_mut().zip(row.iter()) {
-                    *out_elem += elem;
-                }
-            }
-        }
-        out
-    }
-
     const UNIT_MATRIX: [[u16; N]; N] = {
         let mut mat = [[0; N]; N];
         let mut i = 0;
@@ -89,7 +73,7 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         let mut raw_features = [[0; STEPS]; N];
         let mut mat = Self::UNIT_MATRIX;
         for s in 0..N.min(STEPS) {
-            let new_mat = self.multiply(&mat);
+            let new_mat = self * &mat;
 
             for (i, (raw_feat, new_row)) in raw_features.iter_mut().zip(new_mat.iter()).enumerate()
             {
@@ -130,6 +114,25 @@ impl<const N: usize> SymmetricBitMatrix<N> {
             *feat = features[i_old];
         }
         (canon, MatrixFeatures::new(sorted_features))
+    }
+}
+
+impl<const N: usize> std::ops::Mul<&[[u16; N]; N]> for &SymmetricBitMatrix<N> {
+    type Output = [[u16; N]; N];
+
+    fn mul(self, rhs: &[[u16; N]; N]) -> Self::Output {
+        let mut out = [[0; N]; N];
+        for (out_row, &row_bits) in out.iter_mut().zip(self.rows.iter()) {
+            for (j, row) in rhs.iter().enumerate() {
+                if row_bits & 1 << j == 0 {
+                    continue;
+                }
+                for (out_elem, &elem) in out_row.iter_mut().zip(row.iter()) {
+                    *out_elem += elem;
+                }
+            }
+        }
+        out
     }
 }
 
