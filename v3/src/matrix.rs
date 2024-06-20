@@ -234,7 +234,6 @@ pub struct HydroCarbonMatrixIter<const N: usize> {
     col: usize,
     min_row: usize,
     min_col: usize,
-    skip_judge: bool,
 }
 
 impl<const N: usize> HydroCarbonMatrixIter<N> {
@@ -251,7 +250,12 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
 
         let mut iters = Vec::new();
 
-        for n in 0..(1u32 << digits) {
+        let n_max = if digits == 32 {
+            u32::MAX
+        } else {
+            1 << digits - 1
+        };
+        for n in 0..=n_max {
             let mut mat = SymmetricBitMatrix::zero();
             let mut row = 0;
             let mut col = 1;
@@ -290,7 +294,6 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
             col: min_col,
             min_row,
             min_col,
-            skip_judge: false,
         })
     }
 
@@ -300,7 +303,6 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
         } else {
             (row + 1, row + 2)
         }
-        // TODO: コーナーケースで大丈夫か考える
     }
 
     fn prev_row_col(row: usize, col: usize) -> (usize, usize) {
@@ -309,17 +311,11 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
             (r, c) if r + 1 == c => (r - 1, N - 1),
             (r, c) => (r, c - 1),
         }
-        // TODO: コーナーケースで大丈夫か考える
     }
 
     fn step_forward(&mut self) -> bool {
-        let (next_row, next_col) = Self::next_row_col(self.row, self.col);
-        if next_col < N {
-            (self.row, self.col) = (next_row, next_col);
-            true
-        } else {
-            false
-        }
+        (self.row, self.col) = Self::next_row_col(self.row, self.col);
+        self.row < N - 1
     }
 
     fn step_backward(&mut self) -> bool {
@@ -331,19 +327,19 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
         }
     }
 
-    fn is_fine(&mut self) -> bool {
-        if self.col != N - 1 && self.matrix.bit_at(self.row, self.col) == 0 {
+    fn is_fine_up_to(&mut self, row: usize, col: usize) -> bool {
+        if col < N - 1 && self.matrix.bit_at(row, col) == 0 {
             return true;
         }
 
-        let (next_row, _) = Self::next_row_col(self.row, self.col);
-        let mut prev = if self.row == 0 {
+        let (next_row, _) = Self::next_row_col(row, col);
+        let mut prev = if row == 0 {
             0x4f000
         } else {
-            self.row_hashes[self.row - 1]
+            self.row_hashes[row - 1]
         };
 
-        for (i, &row) in self.matrix.rows.iter().enumerate().skip(self.row) {
+        for (i, &row) in self.matrix.rows.iter().enumerate().skip(row) {
             let this = (row.count_ones() << 16) | (row as u32);
             if this > prev {
                 return false;
@@ -355,22 +351,52 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
         }
         next_row < N - 1 || self.matrix.is_connected()
     }
+
+    const FINISHED_ROW_COL: (usize, usize) = (usize::MAX, usize::MAX);
+
+    fn mark_as_finished(&mut self) {
+        (self.row, self.col) = Self::FINISHED_ROW_COL;
+    }
+
+    fn is_finished(&self) -> bool {
+        (self.row, self.col) == Self::FINISHED_ROW_COL
+    }
 }
 
 impl<const N: usize> Iterator for HydroCarbonMatrixIter<N> {
     type Item = SymmetricBitMatrix<N>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.is_finished() {
+            return None;
+        }
+
         let mut is_forward = true;
         loop {
-            if !self.skip_judge && is_forward && self.is_fine() {
+            if self.row >= N - 1 {
+                if self.step_backward() {
+                    is_forward = false;
+                    continue;
+                }
+
+                let (prev_row, prev_col) = Self::prev_row_col(self.row, self.col);
+                self.mark_as_finished();
+                return if self.is_fine_up_to(prev_row, prev_col) {
+                    Some(self.matrix)
+                } else {
+                    None
+                };
+            }
+
+            if is_forward && self.is_fine_up_to(self.row, self.col) {
                 if !self.step_forward() {
-                    break;
+                    return Some(self.matrix);
                 }
             } else {
                 self.matrix.flip(self.row, self.col);
                 if self.matrix.bit_at(self.row, self.col) == 0 {
                     if !self.step_backward() {
+                        self.mark_as_finished();
                         return None;
                     }
                     is_forward = false;
@@ -378,10 +404,7 @@ impl<const N: usize> Iterator for HydroCarbonMatrixIter<N> {
                     is_forward = true;
                 }
             }
-            self.skip_judge = false;
         }
-        self.skip_judge = true;
-        Some(self.matrix)
     }
 }
 

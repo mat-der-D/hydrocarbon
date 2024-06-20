@@ -127,7 +127,7 @@ fn generate_hydrocarbons<const N: usize>(
 
 fn main() -> anyhow::Result<()> {
     let instant = std::time::Instant::now();
-    let mats = generate_hydrocarbons::<10>(7, 128)?;
+    let mats = generate_hydrocarbons::<4>(6, 128)?;
 
     let mut num_h_to_count = BTreeMap::new();
     for mat in mats {
