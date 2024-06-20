@@ -102,7 +102,6 @@ fn generate_hydrocarbons<const N: usize>(
     match N {
         0 => return Err(anyhow::anyhow!("N must be greater than 0")),
         17.. => return Err(anyhow::anyhow!("N must be less than or equal to 16")),
-        1 => todo!(),
         _ => (),
     };
 
@@ -127,7 +126,7 @@ fn generate_hydrocarbons<const N: usize>(
 
 fn main() -> anyhow::Result<()> {
     let instant = std::time::Instant::now();
-    let mats = generate_hydrocarbons::<4>(6, 128)?;
+    let mats = generate_hydrocarbons::<1>(0, 128)?;
 
     let mut num_h_to_count = BTreeMap::new();
     for mat in mats {

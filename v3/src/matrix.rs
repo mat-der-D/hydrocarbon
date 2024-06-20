@@ -241,9 +241,6 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
         if N == 0 {
             return Err(anyhow::anyhow!("N must be greater than 0"));
         }
-        if N == 1 {
-            todo!("yet to implement");
-        }
         if digits > 32.min(N * (N - 1) / 2) {
             return Err(anyhow::anyhow!("Too many digits"));
         }
@@ -253,7 +250,7 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
         let n_max = if digits == 32 {
             u32::MAX
         } else {
-            1 << digits - 1
+            (1 << digits) - 1
         };
         for n in 0..=n_max {
             let mut mat = SymmetricBitMatrix::zero();
