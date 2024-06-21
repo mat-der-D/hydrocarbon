@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use fxhash::FxHashSet;
 
-use crate::{
+use super::{
     matrix::{MatrixFeatures, SymmetricBitMatrix},
     ordering::RowOrderStore,
 };

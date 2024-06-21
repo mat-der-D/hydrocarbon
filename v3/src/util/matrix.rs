@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use fxhash::FxHasher;
 
-use crate::ordering::RowOrderStore;
+use super::ordering::RowOrderStore;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SymmetricBitMatrix<const N: usize> {

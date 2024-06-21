@@ -1,6 +1,6 @@
 use fxhash::FxHashSet;
 
-use crate::matrix::SymmetricTwoBitsMatrix;
+use super::matrix::SymmetricTwoBitsMatrix;
 
 pub fn generate_dehydrogenated<const N: usize>(
     base: SymmetricTwoBitsMatrix<N>,
