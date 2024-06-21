@@ -277,7 +277,7 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
     ) -> anyhow::Result<Self> {
         let mut row_hashes = [0; N];
         for (hash, &row) in row_hashes.iter_mut().zip(matrix.rows.iter()).take(min_row) {
-            *hash = (row.count_ones() << 16) | (row as u32);
+            *hash = Self::calc_row_hash(row);
         }
         for (i, &row) in row_hashes.iter().enumerate().take(min_row) {
             if i == 0 && row > 0x4f000 || i != 0 && row > row_hashes[i - 1] {
@@ -337,7 +337,7 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
         };
 
         for (i, &row) in self.matrix.rows.iter().enumerate().skip(row) {
-            let this = (row.count_ones() << 16) | (row as u32);
+            let this = Self::calc_row_hash(row);
             if this > prev {
                 return false;
             }
@@ -347,6 +347,10 @@ impl<const N: usize> HydroCarbonMatrixIter<N> {
             }
         }
         next_row < N - 1 || self.matrix.is_connected()
+    }
+
+    fn calc_row_hash(row: u16) -> u32 {
+        (row.count_ones() << 16) | (row as u32)
     }
 
     const FINISHED_ROW_COL: (usize, usize) = (usize::MAX, usize::MAX);
