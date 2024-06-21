@@ -132,7 +132,7 @@ pub fn display_counts<const N: usize>(mats: &[SymmetricTwoBitsMatrix<N>]) {
     }
 
     println!("===== [C = {N:>2}] =====");
-    println!("#H: #HydroCarbods");
+    println!("#H: #HydroCarbons");
     for (num_h, count) in num_h_to_count {
         println!("{:>2}: {}", num_h, count);
     }
