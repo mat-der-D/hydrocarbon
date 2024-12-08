@@ -106,7 +106,7 @@ pub fn generate_hydrocarbons<const N: usize>(
     };
 
     let feat2mats = gather_feat2mats::<N>(digits)?;
-    let store = Arc::new(PermutationsStore::<N>::new_parallel(num_threads as u64));
+    let store = Arc::new(PermutationsStore::<N>::new());
 
     let mut handlers = Vec::new();
     let chunk_size = feat2mats.len().div_ceil(num_threads);
