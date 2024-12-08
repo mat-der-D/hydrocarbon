@@ -1,19 +1,19 @@
-use std::hash::Hash;
+use std::{collections::VecDeque, hash::Hash};
 
 use fxhash::FxHashSet;
 
 use super::{
     matrix::{MatrixFeatures, SymmetricBitMatrix},
-    ordering::RowOrderStore,
+    ordering::{Permutation, RowOrderStore},
 };
 
 pub fn gather_unique_matrices_with_symmetry<const N: usize, T>(
     matrices: &[SymmetricBitMatrix<N>],
     feature: &MatrixFeatures<N>,
     store: &RowOrderStore<N>,
-) -> Vec<(SymmetricBitMatrix<N>, Vec<[usize; N]>)>
+) -> Vec<(SymmetricBitMatrix<N>, Vec<Permutation<N>>)>
 where
-    T: From<SymmetricBitMatrix<N>> + Eq + Hash,
+    T: From<SymmetricBitMatrix<N>> + Copy + Eq + Hash,
 {
     let mut mat_sym_vec = Vec::new();
     let mut seen: Vec<FxHashSet<T>> = Vec::new();
@@ -35,18 +35,33 @@ fn make_variants_symmetry<const N: usize, T>(
     hash: T,
     feature: &MatrixFeatures<N>,
     store: &RowOrderStore<N>,
-) -> (FxHashSet<T>, Vec<[usize; N]>)
+) -> (FxHashSet<T>, Vec<Permutation<N>>)
 where
-    T: From<SymmetricBitMatrix<N>> + Eq + Hash,
+    T: From<SymmetricBitMatrix<N>> + Copy + Eq + Hash,
 {
     let mut variants = FxHashSet::default();
+    variants.insert(hash);
     let mut symmetry = Vec::new();
-    for &row_order in feature.generate_row_orders(store) {
-        let rearranged_hash: T = mat.create_rearranged(&row_order).into();
-        if hash == rearranged_hash {
-            symmetry.push(row_order);
+    let generators = feature.generate_permutations(store);
+    let mut queue = VecDeque::new();
+    queue.push_back((*mat, Permutation::<N>::identity()));
+    while !queue.is_empty() {
+        let (mat_, perm) = queue.pop_front().unwrap();
+        for gen in generators {
+            let new_mat = gen.permute(&mat_);
+            let new_mat_hash: T = new_mat.into();
+            let accumulated = *gen * perm;
+            if hash == new_mat_hash
+                && !accumulated.is_identity()
+                && !symmetry.contains(&accumulated)
+            {
+                symmetry.push(accumulated);
+            }
+            if !variants.contains(&new_mat_hash) {
+                variants.insert(new_mat_hash);
+                queue.push_back((new_mat, accumulated));
+            }
         }
-        variants.insert(rearranged_hash);
     }
     (variants, symmetry)
 }

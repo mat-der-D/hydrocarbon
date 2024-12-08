@@ -1,52 +1,67 @@
 use fxhash::FxHashMap;
 
-#[derive(Debug, Clone)]
-struct PermutationGenerator {
-    current: Vec<usize>,
-    is_first: bool,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Permutation<const N: usize> {
+    ordering: [usize; N],
 }
 
-impl PermutationGenerator {
-    fn from_start_count(start: usize, count: usize) -> Self {
-        let current = (start..(start + count)).collect();
-        Self {
-            current,
-            is_first: true,
+impl<const N: usize> Permutation<N> {
+    pub fn new(ordering: [usize; N]) -> Self {
+        Self { ordering }
+    }
+
+    pub fn identity() -> Self {
+        let mut ordering = [0; N];
+        for i in 0..N {
+            ordering[i] = i;
         }
+        Self::new(ordering)
+    }
+
+    pub fn is_identity(&self) -> bool {
+        self.ordering.iter().enumerate().all(|(i, &x)| i == x)
+    }
+
+    pub fn new_transposition(i: usize, j: usize) -> Self {
+        let mut ordering = [0; N];
+        for k in 0..N {
+            ordering[k] = k;
+        }
+        ordering.swap(i, j);
+        Self::new(ordering)
+    }
+
+    pub fn ordering(&self) -> &[usize; N] {
+        &self.ordering
+    }
+
+    pub fn permute<P>(&self, permutable: &P) -> P
+    where
+        P: Permutable<N>,
+    {
+        permutable.permute_by(self)
     }
 }
 
-impl Iterator for PermutationGenerator {
-    type Item = Vec<usize>;
+impl<const N: usize> std::ops::Mul for Permutation<N> {
+    type Output = Self;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.is_first {
-            self.is_first = false;
-            return Some(self.current.clone());
+    fn mul(self, rhs: Self) -> Self::Output {
+        let mut ordering = [0; N];
+        for i in 0..N {
+            ordering[i] = self.ordering[rhs.ordering[i]];
         }
-
-        let mut i = self.current.len() - 1;
-        while i > 0 && self.current[i - 1] >= self.current[i] {
-            i -= 1;
-        }
-        if i == 0 {
-            return None;
-        }
-
-        let mut j = self.current.len() - 1;
-        while self.current[j] <= self.current[i - 1] {
-            j -= 1;
-        }
-
-        self.current.swap(i - 1, j);
-        self.current[i..].reverse();
-        Some(self.current.clone())
+        Self::new(ordering)
     }
+}
+
+pub trait Permutable<const N: usize> {
+    fn permute_by(&self, permutation: &Permutation<N>) -> Self;
 }
 
 #[derive(Debug, Clone)]
 pub struct RowOrderStore<const N: usize> {
-    memory: FxHashMap<[u64; N], Vec<[usize; N]>>,
+    memory: FxHashMap<[u64; N], Vec<Permutation<N>>>,
 }
 
 impl<const N: usize> Default for RowOrderStore<N> {
@@ -98,30 +113,20 @@ impl<const N: usize> RowOrderStore<N> {
         hash_array
     }
 
-    fn generate(hash: &[u64; N]) -> Vec<[usize; N]> {
-        let mut row_orders = Vec::new();
-        Self::generate_impl(hash, &mut [0; N], &mut row_orders);
-        row_orders
-    }
-
-    fn generate_impl(hash: &[u64], row_order: &mut [usize; N], row_orders: &mut Vec<[usize; N]>) {
-        if hash.is_empty() {
-            row_orders.push(*row_order);
-            return;
-        }
-
-        let same_count = hash.iter().take_while(|&&x| x == hash[0]).count();
-        let residual = &hash[same_count..];
-        let i0 = N - hash.len();
-        for perm in PermutationGenerator::from_start_count(i0, same_count) {
-            for (row_order_elem, &p) in row_order[i0..].iter_mut().zip(perm.iter()) {
-                *row_order_elem = p;
+    fn generate(hash: &[u64; N]) -> Vec<Permutation<N>> {
+        let mut perms = Vec::new();
+        let mut i_start = 0;
+        for i_end in 1..N {
+            if hash[i_start] != hash[i_end] {
+                i_start = i_end;
+            } else {
+                perms.push(Permutation::new_transposition(i_start, i_end));
             }
-            Self::generate_impl(residual, row_order, row_orders);
         }
+        perms
     }
 
-    pub fn get(&self, key: &[u64; N]) -> &Vec<[usize; N]> {
+    pub fn get(&self, key: &[u64; N]) -> &Vec<Permutation<N>> {
         &self.memory[key]
     }
 }

@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use fxhash::FxHasher;
 
-use super::ordering::RowOrderStore;
+use super::ordering::{Permutable, Permutation, RowOrderStore};
 
 #[derive(Debug, Clone, Copy)]
 pub struct SymmetricBitMatrix<const N: usize> {
@@ -117,6 +117,12 @@ impl<const N: usize> SymmetricBitMatrix<N> {
     }
 }
 
+impl<const N: usize> Permutable<N> for SymmetricBitMatrix<N> {
+    fn permute_by(&self, permutation: &super::ordering::Permutation<N>) -> Self {
+        self.create_rearranged(permutation.ordering())
+    }
+}
+
 impl<const N: usize> std::ops::Mul<&[[u16; N]; N]> for &SymmetricBitMatrix<N> {
     type Output = [[u16; N]; N];
 
@@ -207,7 +213,10 @@ impl<const N: usize> MatrixFeatures<N> {
         key
     }
 
-    pub fn generate_row_orders<'a>(&'a self, store: &'a RowOrderStore<N>) -> &Vec<[usize; N]> {
+    pub fn generate_permutations<'a>(
+        &'a self,
+        store: &'a RowOrderStore<N>,
+    ) -> &Vec<Permutation<N>> {
         store.get(&self.order_store_key)
     }
 }
@@ -461,6 +470,12 @@ impl<const N: usize> SymmetricTwoBitsMatrix<N> {
     }
 }
 
+impl<const N: usize> Permutable<N> for SymmetricTwoBitsMatrix<N> {
+    fn permute_by(&self, permutation: &Permutation<N>) -> Self {
+        self.create_rearranged(permutation.ordering())
+    }
+}
+
 impl<const N: usize> From<SymmetricBitMatrix<N>> for SymmetricTwoBitsMatrix<N> {
     fn from(matrix: SymmetricBitMatrix<N>) -> Self {
         let mut rows = [0; N];
@@ -471,5 +486,17 @@ impl<const N: usize> From<SymmetricBitMatrix<N>> for SymmetricTwoBitsMatrix<N> {
             }
         }
         Self { rows }
+    }
+}
+
+impl<const N: usize> std::fmt::Display for SymmetricTwoBitsMatrix<N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for row in self.rows.iter() {
+            for i in 0..N {
+                write!(f, "{}", row >> (2 * i) & 0b11)?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
     }
 }

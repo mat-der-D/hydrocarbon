@@ -1,10 +1,12 @@
+use std::collections::VecDeque;
+
 use fxhash::FxHashSet;
 
-use super::matrix::SymmetricTwoBitsMatrix;
+use super::{matrix::SymmetricTwoBitsMatrix, ordering::Permutation};
 
 pub fn generate_dehydrogenated<const N: usize>(
     base: SymmetricTwoBitsMatrix<N>,
-    symmetry: &[[usize; N]],
+    symmetry: &[Permutation<N>],
 ) -> Vec<SymmetricTwoBitsMatrix<N>> {
     let mut mats = vec![base];
     let base_set: FxHashSet<_> = [base].into_iter().collect();
@@ -36,10 +38,21 @@ pub fn generate_dehydrogenated<const N: usize>(
 
 fn make_variants<const N: usize>(
     mat: &SymmetricTwoBitsMatrix<N>,
-    symmetry: &[[usize; N]],
+    symmetry: &[Permutation<N>],
 ) -> FxHashSet<SymmetricTwoBitsMatrix<N>> {
-    symmetry
-        .iter()
-        .map(|row_order| mat.create_rearranged(row_order))
-        .collect()
+    let mut variants = FxHashSet::default();
+    variants.insert(*mat);
+    let mut queue = VecDeque::new();
+    queue.push_back(*mat);
+    while !queue.is_empty() {
+        let mat_ = queue.pop_front().unwrap();
+        for perm in symmetry {
+            let new_mat = perm.permute(&mat_);
+            if !variants.contains(&new_mat) {
+                variants.insert(new_mat);
+                queue.push_back(new_mat);
+            }
+        }
+    }
+    variants
 }
