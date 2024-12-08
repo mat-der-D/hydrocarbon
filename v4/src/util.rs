@@ -8,7 +8,7 @@ use std::{collections::BTreeMap, hash::Hash, sync::Arc};
 use dehydrogenate::generate_dehydrogenated;
 use fxhash::FxHashMap;
 use matrix::{HydroCarbonMatrixIter, MatrixFeatures, SymmetricBitMatrix, SymmetricTwoBitsMatrix};
-use ordering::RowOrderStore;
+use ordering::PermutationsStore;
 use uniquify::gather_unique_matrices_with_symmetry;
 
 #[derive(Debug)]
@@ -78,14 +78,14 @@ fn gather_feat2mats<const N: usize>(
 
 fn generate_hydrocarbons_from_feat2mats<const N: usize>(
     hash2mats: FxHashMap<MatrixFeatures<N>, Vec<SymmetricBitMatrix<N>>>,
-    store: &RowOrderStore<N>,
+    store: &PermutationsStore<N>,
 ) -> Vec<SymmetricTwoBitsMatrix<N>> {
     let mut all_mats = Vec::new();
     for (hash, mats) in hash2mats {
         let unique_mat_syms = if N <= 11 {
-            gather_unique_matrices_with_symmetry::<N, u64>(&mats, &hash, &store)
+            gather_unique_matrices_with_symmetry::<N, u64>(&mats, &hash, store)
         } else {
-            gather_unique_matrices_with_symmetry::<N, u128>(&mats, &hash, &store)
+            gather_unique_matrices_with_symmetry::<N, u128>(&mats, &hash, store)
         };
         for (mat, symmetry) in unique_mat_syms {
             let dehydrogenated = generate_dehydrogenated(mat.into(), &symmetry);
@@ -106,7 +106,7 @@ pub fn generate_hydrocarbons<const N: usize>(
     };
 
     let feat2mats = gather_feat2mats::<N>(digits)?;
-    let store = Arc::new(RowOrderStore::<N>::new_parallel(num_threads as u64));
+    let store = Arc::new(PermutationsStore::<N>::new_parallel(num_threads as u64));
 
     let mut handlers = Vec::new();
     let chunk_size = feat2mats.len().div_ceil(num_threads);

@@ -4,13 +4,13 @@ use fxhash::{FxHashMap, FxHashSet};
 
 use super::{
     matrix::{MatrixFeatures, SymmetricBitMatrix},
-    ordering::{Permutation, RowOrderStore},
+    ordering::{Permutation, PermutationsStore},
 };
 
 pub fn gather_unique_matrices_with_symmetry<const N: usize, T>(
     matrices: &[SymmetricBitMatrix<N>],
     feature: &MatrixFeatures<N>,
-    store: &RowOrderStore<N>,
+    store: &PermutationsStore<N>,
 ) -> Vec<(SymmetricBitMatrix<N>, Vec<Permutation<N>>)>
 where
     T: From<SymmetricBitMatrix<N>> + Copy + Eq + Hash,
@@ -34,7 +34,7 @@ fn make_variants_symmetry<const N: usize, T>(
     mat: &SymmetricBitMatrix<N>,
     hash: T,
     feature: &MatrixFeatures<N>,
-    store: &RowOrderStore<N>,
+    store: &PermutationsStore<N>,
 ) -> (FxHashSet<T>, Vec<Permutation<N>>)
 where
     T: From<SymmetricBitMatrix<N>> + Copy + Eq + Hash,
@@ -64,6 +64,6 @@ where
             }
         }
     }
-    let variants = hash2perm.keys().copied().collect();
+    let variants = hash2perm.into_keys().collect();
     (variants, symmetry.into_iter().collect())
 }

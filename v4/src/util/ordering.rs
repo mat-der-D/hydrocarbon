@@ -10,12 +10,18 @@ impl<const N: usize> Permutation<N> {
         Self { ordering }
     }
 
-    pub fn identity() -> Self {
-        let mut ordering = [0; N];
-        for i in 0..N {
-            ordering[i] = i;
+    const INDEX_ARRAY: [usize; N] = {
+        let mut array = [0; N];
+        let mut i = 0;
+        while i < N {
+            array[i] = i;
+            i += 1;
         }
-        Self::new(ordering)
+        array
+    };
+
+    pub fn identity() -> Self {
+        Self::new(Self::INDEX_ARRAY)
     }
 
     pub fn inverse(&self) -> Self {
@@ -26,11 +32,8 @@ impl<const N: usize> Permutation<N> {
         Self::new(inverse)
     }
 
-    pub fn new_transposition(i: usize, j: usize) -> Self {
-        let mut ordering = [0; N];
-        for k in 0..N {
-            ordering[k] = k;
-        }
+    fn new_transposition(i: usize, j: usize) -> Self {
+        let mut ordering = Self::INDEX_ARRAY;
         ordering.swap(i, j);
         Self::new(ordering)
     }
@@ -52,8 +55,8 @@ impl<const N: usize> std::ops::Mul for Permutation<N> {
 
     fn mul(self, rhs: Self) -> Self::Output {
         let mut ordering = [0; N];
-        for i in 0..N {
-            ordering[i] = self.ordering[rhs.ordering[i]];
+        for (item, &rhs_item) in ordering.iter_mut().zip(rhs.ordering.iter()) {
+            *item = self.ordering[rhs_item];
         }
         Self::new(ordering)
     }
@@ -64,17 +67,17 @@ pub trait Permutable<const N: usize> {
 }
 
 #[derive(Debug, Clone)]
-pub struct RowOrderStore<const N: usize> {
+pub struct PermutationsStore<const N: usize> {
     memory: FxHashMap<[u64; N], Vec<Permutation<N>>>,
 }
 
-impl<const N: usize> Default for RowOrderStore<N> {
+impl<const N: usize> Default for PermutationsStore<N> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<const N: usize> RowOrderStore<N> {
+impl<const N: usize> PermutationsStore<N> {
     pub fn new() -> Self {
         let mut memory = FxHashMap::default();
         for deltas in 0..(1 << (N - 1)) {

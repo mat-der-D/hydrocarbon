@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use fxhash::FxHasher;
 
-use super::ordering::{Permutable, Permutation, RowOrderStore};
+use super::ordering::{Permutable, Permutation, PermutationsStore};
 
 #[derive(Debug, Clone, Copy)]
 pub struct SymmetricBitMatrix<const N: usize> {
@@ -47,7 +47,7 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         false
     }
 
-    pub fn create_rearranged(&self, row_order: &[usize; N]) -> Self {
+    fn create_rearranged(&self, row_order: &[usize; N]) -> Self {
         let mut rows = [0; N];
         for (new_row, &i_old) in rows.iter_mut().zip(row_order.iter()) {
             let old_row = unsafe { self.rows.get_unchecked(i_old) };
@@ -215,7 +215,7 @@ impl<const N: usize> MatrixFeatures<N> {
 
     pub fn generate_permutations<'a>(
         &'a self,
-        store: &'a RowOrderStore<N>,
+        store: &'a PermutationsStore<N>,
     ) -> &Vec<Permutation<N>> {
         store.get(&self.order_store_key)
     }
@@ -424,7 +424,7 @@ pub struct SymmetricTwoBitsMatrix<const N: usize> {
 }
 
 impl<const N: usize> SymmetricTwoBitsMatrix<N> {
-    pub fn create_rearranged(&self, row_order: &[usize]) -> Self {
+    fn create_rearranged(&self, row_order: &[usize]) -> Self {
         let mut rows_new = [0; N];
         for (row_new, i_old) in rows_new.iter_mut().zip(row_order.iter()) {
             let row_old = unsafe { self.rows.get_unchecked(*i_old) };
