@@ -1,6 +1,6 @@
 use fxhash::FxHashMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Permutation<const N: usize> {
     ordering: [usize; N],
 }
@@ -18,8 +18,12 @@ impl<const N: usize> Permutation<N> {
         Self::new(ordering)
     }
 
-    pub fn is_identity(&self) -> bool {
-        self.ordering.iter().enumerate().all(|(i, &x)| i == x)
+    pub fn inverse(&self) -> Self {
+        let mut inverse = [0; N];
+        for i in 0..N {
+            inverse[self.ordering[i]] = i;
+        }
+        Self::new(inverse)
     }
 
     pub fn new_transposition(i: usize, j: usize) -> Self {

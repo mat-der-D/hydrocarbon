@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, hash::Hash};
 
-use fxhash::FxHashSet;
+use fxhash::{FxHashMap, FxHashSet};
 
 use super::{
     matrix::{MatrixFeatures, SymmetricBitMatrix},
@@ -39,29 +39,31 @@ fn make_variants_symmetry<const N: usize, T>(
 where
     T: From<SymmetricBitMatrix<N>> + Copy + Eq + Hash,
 {
-    let mut variants = FxHashSet::default();
-    variants.insert(hash);
-    let mut symmetry = Vec::new();
-    let generators = feature.generate_permutations(store);
+    let mut symmetry = FxHashSet::default();
+
+    let mut hash2perm = FxHashMap::default();
+    hash2perm.insert(hash, Permutation::<N>::identity());
+
     let mut queue = VecDeque::new();
     queue.push_back((*mat, Permutation::<N>::identity()));
+
+    let generators = feature.generate_permutations(store);
     while !queue.is_empty() {
         let (mat_, perm) = queue.pop_front().unwrap();
         for gen in generators {
             let new_mat = gen.permute(&mat_);
             let new_mat_hash: T = new_mat.into();
-            let accumulated = *gen * perm;
-            if hash == new_mat_hash
-                && !accumulated.is_identity()
-                && !symmetry.contains(&accumulated)
-            {
-                symmetry.push(accumulated);
-            }
-            if !variants.contains(&new_mat_hash) {
-                variants.insert(new_mat_hash);
-                queue.push_back((new_mat, accumulated));
+            let new_mat_perm = *gen * perm;
+            if let Some(saved_perm) = hash2perm.get(&new_mat_hash) {
+                if new_mat_perm != *saved_perm {
+                    symmetry.insert(saved_perm.inverse() * new_mat_perm);
+                }
+            } else {
+                hash2perm.insert(new_mat_hash, new_mat_perm);
+                queue.push_back((new_mat, new_mat_perm));
             }
         }
     }
-    (variants, symmetry)
+    let variants = hash2perm.keys().copied().collect();
+    (variants, symmetry.into_iter().collect())
 }
