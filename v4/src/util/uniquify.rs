@@ -48,8 +48,7 @@ where
     queue.push_back((*mat, Permutation::<N>::IDENTITY));
 
     let generators = feature.generate_permutations(store);
-    while !queue.is_empty() {
-        let (mat_, perm) = queue.pop_front().unwrap();
+    while let Some((mat_, perm)) = queue.pop_front() {
         for gen in generators {
             let new_mat = gen.permute(&mat_);
             let new_mat_hash: T = new_mat.into();
