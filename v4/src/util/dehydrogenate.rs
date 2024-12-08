@@ -44,8 +44,7 @@ fn make_variants<const N: usize>(
     variants.insert(*mat);
     let mut queue = VecDeque::new();
     queue.push_back(*mat);
-    while !queue.is_empty() {
-        let mat_ = queue.pop_front().unwrap();
+    while let Some(mat_) = queue.pop_front() {
         for perm in symmetry {
             let new_mat = perm.permute(&mat_);
             if !variants.contains(&new_mat) {
