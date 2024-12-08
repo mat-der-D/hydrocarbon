@@ -6,7 +6,7 @@ pub struct Permutation<const N: usize> {
 }
 
 impl<const N: usize> Permutation<N> {
-    pub fn new(ordering: [usize; N]) -> Self {
+    pub const fn new(ordering: [usize; N]) -> Self {
         Self { ordering }
     }
 
@@ -20,17 +20,7 @@ impl<const N: usize> Permutation<N> {
         array
     };
 
-    pub fn identity() -> Self {
-        Self::new(Self::INDEX_ARRAY)
-    }
-
-    pub fn inverse(&self) -> Self {
-        let mut inverse = [0; N];
-        for i in 0..N {
-            inverse[self.ordering[i]] = i;
-        }
-        Self::new(inverse)
-    }
+    pub const IDENTITY: Self = Self::new(Self::INDEX_ARRAY);
 
     fn new_transposition(i: usize, j: usize) -> Self {
         let mut ordering = Self::INDEX_ARRAY;
@@ -40,6 +30,14 @@ impl<const N: usize> Permutation<N> {
 
     pub fn ordering(&self) -> &[usize; N] {
         &self.ordering
+    }
+
+    pub fn inverse(&self) -> Self {
+        let mut inverse = [0; N];
+        for i in 0..N {
+            inverse[self.ordering[i]] = i;
+        }
+        Self::new(inverse)
     }
 
     pub fn permute<P>(&self, permutable: &P) -> P
@@ -108,7 +106,7 @@ impl<const N: usize> PermutationsStore<N> {
         perms
     }
 
-    pub fn get(&self, key: &[u64; N]) -> &Vec<Permutation<N>> {
+    pub fn get(&self, key: &[u64; N]) -> &[Permutation<N>] {
         &self.memory[key]
     }
 }

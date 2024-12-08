@@ -42,10 +42,10 @@ where
     let mut symmetry = FxHashSet::default();
 
     let mut hash2perm = FxHashMap::default();
-    hash2perm.insert(hash, Permutation::<N>::identity());
+    hash2perm.insert(hash, Permutation::<N>::IDENTITY);
 
     let mut queue = VecDeque::new();
-    queue.push_back((*mat, Permutation::<N>::identity()));
+    queue.push_back((*mat, Permutation::<N>::IDENTITY));
 
     let generators = feature.generate_permutations(store);
     while !queue.is_empty() {

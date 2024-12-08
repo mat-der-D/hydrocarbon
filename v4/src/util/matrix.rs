@@ -214,7 +214,7 @@ impl<const N: usize> MatrixFeatures<N> {
     pub fn generate_permutations<'a>(
         &'a self,
         store: &'a PermutationsStore<N>,
-    ) -> &Vec<Permutation<N>> {
+    ) -> &[Permutation<N>] {
         store.get(&self.order_store_key)
     }
 }
