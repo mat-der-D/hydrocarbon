@@ -47,17 +47,6 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         false
     }
 
-    fn create_rearranged(&self, row_order: &[usize; N]) -> Self {
-        let mut rows = [0; N];
-        for (new_row, &i_old) in rows.iter_mut().zip(row_order.iter()) {
-            let old_row = unsafe { self.rows.get_unchecked(i_old) };
-            for (j_new, &j_old) in row_order.iter().enumerate() {
-                *new_row |= (old_row >> j_old & 1) << j_new;
-            }
-        }
-        Self { rows }
-    }
-
     const UNIT_MATRIX: [[u16; N]; N] = {
         let mut mat = [[0; N]; N];
         let mut i = 0;
@@ -108,7 +97,8 @@ impl<const N: usize> SymmetricBitMatrix<N> {
         let features = self.calc_features();
         let mut row_order = Self::INDEX_ARRAY;
         row_order.sort_by_key(|&i| features[i]);
-        let canon = self.create_rearranged(&row_order);
+        let perm = Permutation::new(row_order);
+        let canon = self.permute_by(&perm);
         let mut sorted_features = [0; N];
         for (feat, &i_old) in sorted_features.iter_mut().zip(row_order.iter()) {
             *feat = features[i_old];
@@ -119,7 +109,15 @@ impl<const N: usize> SymmetricBitMatrix<N> {
 
 impl<const N: usize> Permutable<N> for SymmetricBitMatrix<N> {
     fn permute_by(&self, permutation: &super::ordering::Permutation<N>) -> Self {
-        self.create_rearranged(permutation.ordering())
+        let row_order = permutation.ordering();
+        let mut rows = [0; N];
+        for (new_row, &i_old) in rows.iter_mut().zip(row_order.iter()) {
+            let old_row = unsafe { self.rows.get_unchecked(i_old) };
+            for (j_new, &j_old) in row_order.iter().enumerate() {
+                *new_row |= (old_row >> j_old & 1) << j_new;
+            }
+        }
+        Self { rows }
     }
 }
 
@@ -424,17 +422,6 @@ pub struct SymmetricTwoBitsMatrix<const N: usize> {
 }
 
 impl<const N: usize> SymmetricTwoBitsMatrix<N> {
-    fn create_rearranged(&self, row_order: &[usize]) -> Self {
-        let mut rows_new = [0; N];
-        for (row_new, i_old) in rows_new.iter_mut().zip(row_order.iter()) {
-            let row_old = unsafe { self.rows.get_unchecked(*i_old) };
-            for (j_new, j_old) in row_order.iter().enumerate() {
-                *row_new |= (row_old >> (2 * j_old) & 0b11) << (2 * j_new);
-            }
-        }
-        Self { rows: rows_new }
-    }
-
     fn count_bonds(row: u32) -> u32 {
         2 * (row & 0xaaaa_aaaa).count_ones() + (row & 0x5555_5555).count_ones()
     }
@@ -472,7 +459,15 @@ impl<const N: usize> SymmetricTwoBitsMatrix<N> {
 
 impl<const N: usize> Permutable<N> for SymmetricTwoBitsMatrix<N> {
     fn permute_by(&self, permutation: &Permutation<N>) -> Self {
-        self.create_rearranged(permutation.ordering())
+        let row_order = permutation.ordering();
+        let mut rows_new = [0; N];
+        for (row_new, i_old) in rows_new.iter_mut().zip(row_order.iter()) {
+            let row_old = unsafe { self.rows.get_unchecked(*i_old) };
+            for (j_new, j_old) in row_order.iter().enumerate() {
+                *row_new |= (row_old >> (2 * j_old) & 0b11) << (2 * j_new);
+            }
+        }
+        Self { rows: rows_new }
     }
 }
 
