@@ -22,9 +22,11 @@ impl<const N: usize> Permutation<N> {
 
     pub const IDENTITY: Self = Self::new(Self::INDEX_ARRAY);
 
-    fn new_transposition(i: usize, j: usize) -> Self {
+    fn new_cyclic(start: usize, end: usize) -> Self {
         let mut ordering = Self::INDEX_ARRAY;
-        ordering.swap(i, j);
+        for i in start..end {
+            ordering.swap(i, i + 1);
+        }
         Self::new(ordering)
     }
 
@@ -89,12 +91,20 @@ impl<const N: usize> PermutationsStore<N> {
     fn generate(hash: &[u64; N]) -> Vec<Permutation<N>> {
         let mut perms = Vec::new();
         let mut i_start = 0;
-        for i_end in 1..N {
-            if hash[i_start] != hash[i_end] {
-                i_start = i_end;
-            } else {
-                perms.push(Permutation::new_transposition(i_start, i_end));
+        for i_end in 1..=N {
+            if i_end != N && hash[i_start] == hash[i_end] {
+                continue;
             }
+            match i_end - i_start {
+                0 => unreachable!(),
+                1 => (),
+                2 => perms.push(Permutation::new_cyclic(i_start, i_end - 1)),
+                _ => {
+                    perms.push(Permutation::new_cyclic(i_start, i_start + 1));
+                    perms.push(Permutation::new_cyclic(i_start, i_end - 1));
+                }
+            }
+            i_start = i_end;
         }
         perms
     }
