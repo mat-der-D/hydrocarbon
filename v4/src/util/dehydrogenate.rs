@@ -2,7 +2,10 @@ use std::collections::VecDeque;
 
 use fxhash::FxHashSet;
 
-use super::{matrix::SymmetricTwoBitsMatrix, ordering::Permutation};
+use super::{
+    matrix::SymmetricTwoBitsMatrix,
+    ordering::{Permutable, Permutation},
+};
 
 pub fn generate_dehydrogenated<const N: usize>(
     base: SymmetricTwoBitsMatrix<N>,
@@ -46,7 +49,7 @@ fn make_variants<const N: usize>(
     queue.push_back(*mat);
     while let Some(mat_) = queue.pop_front() {
         for perm in symmetry {
-            let new_mat = perm.permute(&mat_);
+            let new_mat = mat_.permute_by(perm);
             if !variants.contains(&new_mat) {
                 variants.insert(new_mat);
                 queue.push_back(new_mat);

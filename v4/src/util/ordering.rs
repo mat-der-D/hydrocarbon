@@ -39,13 +39,6 @@ impl<const N: usize> Permutation<N> {
         }
         Self::new(inverse)
     }
-
-    pub fn permute<P>(&self, permutable: &P) -> P
-    where
-        P: Permutable<N>,
-    {
-        permutable.permute_by(self)
-    }
 }
 
 impl<const N: usize> std::ops::Mul for Permutation<N> {

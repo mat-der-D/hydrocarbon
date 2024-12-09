@@ -4,7 +4,7 @@ use fxhash::{FxHashMap, FxHashSet};
 
 use super::{
     matrix::{MatrixFeatures, SymmetricBitMatrix},
-    ordering::{Permutation, PermutationsStore},
+    ordering::{Permutable, Permutation, PermutationsStore},
 };
 
 pub fn gather_unique_matrices_with_symmetry<const N: usize, T>(
@@ -49,13 +49,13 @@ where
 
     let generators = feature.generate_permutations(store);
     while let Some((mat_, perm)) = queue.pop_front() {
-        for gen in generators {
-            let new_mat = gen.permute(&mat_);
+        for &gen in generators {
+            let new_mat = mat_.permute_by(&gen);
             let new_mat_hash: T = new_mat.into();
-            let new_mat_perm = *gen * perm;
+            let new_mat_perm = perm * gen;
             if let Some(saved_perm) = hash2perm.get(&new_mat_hash) {
                 if new_mat_perm != *saved_perm {
-                    symmetry.insert(saved_perm.inverse() * new_mat_perm);
+                    symmetry.insert(new_mat_perm * saved_perm.inverse());
                 }
             } else {
                 hash2perm.insert(new_mat_hash, new_mat_perm);
