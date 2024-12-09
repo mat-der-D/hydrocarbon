@@ -27,7 +27,7 @@ pub fn generate_dehydrogenated<const N: usize>(
                 mats.push(new_mat);
                 next.push(new_mat);
 
-                let variants = make_variants(&new_mat, symmetry);
+                let variants = make_variants(new_mat, symmetry);
                 seen.push(variants);
             }
         }
@@ -40,13 +40,13 @@ pub fn generate_dehydrogenated<const N: usize>(
 }
 
 fn make_variants<const N: usize>(
-    mat: &SymmetricTwoBitsMatrix<N>,
+    mat: SymmetricTwoBitsMatrix<N>,
     symmetry: &[Permutation<N>],
 ) -> FxHashSet<SymmetricTwoBitsMatrix<N>> {
     let mut variants = FxHashSet::default();
-    variants.insert(*mat);
+    variants.insert(mat);
     let mut queue = VecDeque::new();
-    queue.push_back(*mat);
+    queue.push_back(mat);
     while let Some(mat_) = queue.pop_front() {
         for perm in symmetry {
             let new_mat = mat_.permute_by(perm);

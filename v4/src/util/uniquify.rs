@@ -23,7 +23,7 @@ where
             continue;
         }
 
-        let (variants, symmetry) = make_variants_symmetry(&mat, hash, feature, store);
+        let (variants, symmetry) = make_variants_symmetry(mat, hash, feature, store);
         seen.push(variants);
         mat_sym_vec.push((mat, symmetry));
     }
@@ -31,7 +31,7 @@ where
 }
 
 fn make_variants_symmetry<const N: usize, T>(
-    mat: &SymmetricBitMatrix<N>,
+    mat: SymmetricBitMatrix<N>,
     hash: T,
     feature: &MatrixFeatures<N>,
     store: &PermutationsStore<N>,
@@ -45,7 +45,7 @@ where
     hash2perm.insert(hash, Permutation::<N>::IDENTITY);
 
     let mut queue = VecDeque::new();
-    queue.push_back((*mat, Permutation::<N>::IDENTITY));
+    queue.push_back((mat, Permutation::<N>::IDENTITY));
 
     let generators = feature.generate_permutations(store);
     while let Some((mat_, perm)) = queue.pop_front() {
